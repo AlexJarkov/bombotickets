@@ -1,31 +1,39 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+/// Utility class that provides easy access to the current
+/// screen dimensions. Instead of using mutable `late` fields,
+/// the values are calculated once and exposed as `final`
+/// properties, making the class simpler and safer to use.
 class Responsive {
-  late double _width;
-  late double _height;
-  late double _diagonal;
-  late bool _isTablet;
+  final double width;
+  final double height;
+  final double diagonal;
+  final bool isTablet;
 
-  double get width => _width;
-  double get height => _height;
-  double get diagonal => _diagonal;
-  bool get isTablet => _isTablet;
+  /// Creates a [Responsive] object from the given [BuildContext].
+  factory Responsive.of(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final diagonal =
+        math.sqrt(math.pow(size.width, 2) + math.pow(size.height, 2));
+    final isTablet = size.shortestSide >= 600;
 
-  static Responsive of(BuildContext context) => Responsive(context);
-
-  Responsive(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
-    _width = size.width;
-    _height = size.height;
-
-    // c2+ a2+b2 => c = srt(a2+b2)
-    _diagonal = math.sqrt(math.pow(_width, 2) + math.pow(_height, 2));
-
-    _isTablet = size.shortestSide >= 600;
+    return Responsive._(
+      width: size.width,
+      height: size.height,
+      diagonal: diagonal,
+      isTablet: isTablet,
+    );
   }
 
-  double wp(double percent) => _width * percent / 100;
-  double hp(double percent) => _height * percent / 100;
-  double dp(double percent) => _diagonal * percent / 100;
+  const Responsive._({
+    required this.width,
+    required this.height,
+    required this.diagonal,
+    required this.isTablet,
+  });
+
+  double wp(double percent) => width * percent / 100;
+  double hp(double percent) => height * percent / 100;
+  double dp(double percent) => diagonal * percent / 100;
 }
