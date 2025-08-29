@@ -1,4 +1,5 @@
 import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -45,20 +46,29 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final res = Responsive.of(context);
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBackground,
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
           return Center(
-            child: Transform.translate(
-              offset: Offset(0, -_positionAnimation.value * 279),
+            child: Opacity(
+              opacity: _controller.value,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
+                  Image.asset(
+                    'assets/images/logo_masterpass.png',
+                    width: res.wp(65),
+                  ),
+                  SizedBox(height: res.hp(3)),
                   Text(
                     'Bienvenido a Bombotickets',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: res.dp(3.5),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),

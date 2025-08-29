@@ -23,8 +23,8 @@ class AppTheme {
 
   // Font sizes (in logical pixels)
   static const double fontSizeH1 = 24.0;
-  static const double fontSizeH2 = 18.0;
-  static const double fontSizeH3 = 14.0;
+  static const double fontSizeH2 = 20.0;
+  static const double fontSizeH3 = 16.0;
   static const double fontSizeBodyNormal = 14.0;
   static const double fontSizeBodyMedium = 19.0;
   static const double fontSizeBodyLarge = 26.0;

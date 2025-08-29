@@ -1,3 +1,4 @@
+import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/auth/login/providers/login_form_provider.dart';
@@ -13,6 +14,7 @@ class LoginScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final res = Responsive.of(context);
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -35,41 +37,21 @@ class LoginScreen extends ConsumerWidget {
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 48,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: res.wp(6),
+                        vertical: res.hp(6),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: 40),
-                          Icon(
-                            Icons.confirmation_number,
-                            size: 64,
-                            color: AppTheme.primaryColor,
+                          SizedBox(height: res.hp(4)),
+                          Image.asset(
+                            'assets/images/logo_masterpass.png',
+                            width: res.wp(60),
                           ),
-                          SizedBox(height: 24),
-                          Text(
-                            'Bombotickets',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.bodyFontColor,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Tu app de tickets',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.bodyFontColor,
-                            ),
-                          ),
-                          SizedBox(height: 32),
+                          SizedBox(height: res.hp(4)),
                           _LoginForm(),
-                          Spacer(),
+                          const Spacer(),
                         ],
                       ),
                     ),
@@ -107,6 +89,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
     final loginForm = ref.watch(loginFormProvider);
     final authState = ref.watch(authProvider);
     final colors = Theme.of(context).colorScheme;
+    final Responsive responsive = Responsive.of(context);
 
     ref.listen(authProvider, (previous, next) async {
       if (next.status == AuthStatus.authenticated &&
@@ -125,20 +108,28 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
     });
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(responsive.dp(24)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(responsive.dp(20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
+            blurRadius: responsive.dp(10),
+            spreadRadius: responsive.dp(2),
           ),
         ],
       ),
       child: Column(
         children: [
+          SizedBox(height: responsive.hp(2)),
+          Image.asset(
+            'assets/images/logo_masterpass.png',
+            width: responsive.wp(40),
+            height: responsive.hp(10),
+            fit: BoxFit.contain,
+          ),
+          SizedBox(height: responsive.hp(2)),
           if (authState.status == AuthStatus.authenticated)
             _StatusMessage(
               message: 'Sesión iniciada correctamente',
@@ -149,7 +140,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
           else if (loginForm.errorMessage != null)
             _StatusMessage(message: loginForm.errorMessage!, isError: true),
 
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.hp(2)),
 
           CustomInputField(
             label: 'Código de Usuario',
@@ -162,7 +153,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
             isFormPosted: loginForm.isFormPosted,
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.hp(2)),
 
           Focus(
             onFocusChange: (hasFocus) {
@@ -206,7 +197,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: responsive.hp(3)),
 
           CustomFilledButton(
             text: 'Entrar',
@@ -218,7 +209,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
             buttonColor: colors.primary,
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: responsive.hp(3)),
 
           TextButton(
             onPressed: () => context.push('/register'),

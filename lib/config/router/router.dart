@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'dart:ui';
 import 'package:bombotickets/features/auth/login/presentation/login_screen.dart';
+import 'package:bombotickets/features/auth/register/presentation/register_screen.dart';
 import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dart';
 import 'package:bombotickets/features/home/presentation/home_screen.dart';
 import 'package:bombotickets/features/shared/animations/slide_fade_transition.dart';
@@ -31,6 +32,12 @@ final appRouter = GoRouter(
       path: '/login',
       name: LoginScreen.name,
       builder: (context, state) => const LoginScreen(),
+    ),
+
+    GoRoute(
+      path: '/register',
+      name: RegisterScreen.name,
+      builder: (context, state) => const RegisterScreen(),
     ),
 
     GoRoute(

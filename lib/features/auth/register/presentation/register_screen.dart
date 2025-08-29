@@ -1,3 +1,4 @@
+import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/features/auth/providers/auth_provider.dart';
 import 'package:bombotickets/features/auth/register/providers/register_form_provider.dart';
 import 'package:bombotickets/features/shared/widgets/custom_filled_button.dart';
@@ -6,21 +7,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:go_router/go_router.dart';
+import 'package:bombotickets/config/theme/theme.dart';
 
 class RegisterScreen extends ConsumerWidget {
+  static String name = 'register';
+
   const RegisterScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
 
+    final res = Responsive.of(context);
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              colors.primary,
-              colors.primary.withOpacity(0.5),
+              AppTheme.primaryColor,
+              AppTheme.primaryColor.withOpacity(0.7),
               Colors.white,
             ],
             begin: Alignment.topCenter,
@@ -36,19 +41,34 @@ class RegisterScreen extends ConsumerWidget {
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 32,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: res.wp(6),
+                        vertical: res.hp(6),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const SizedBox(height: 16),
-                          _BackButton(),
-                          const SizedBox(height: 16),
-                          const _BrandingSection(),
-                          const SizedBox(height: 16),
-                          const _RegisterForm(),
+                          SizedBox(height: res.hp(4)),
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: IconButton(
+                              onPressed: () => context.canPop()
+                                  ? context.pop()
+                                  : context.go('/login'),
+                              icon: Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                                size: res.wp(8),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: res.hp(4)),
+                          Image.asset(
+                            'assets/images/logo_masterpass.png',
+                            width: res.wp(60),
+                          ),
+                          SizedBox(height: res.hp(4)),
+                          _RegisterForm(),
                           const Spacer(),
                         ],
                       ),
@@ -64,42 +84,6 @@ class RegisterScreen extends ConsumerWidget {
   }
 }
 
-class _BackButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: IconButton(
-        onPressed: () =>
-            context.canPop() ? context.pop() : context.go('/login'),
-        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
-      ),
-    );
-  }
-}
-
-class _BrandingSection extends StatelessWidget {
-  const _BrandingSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Image.asset("assets/images/logo_si2.png", width: 400),
-        const SizedBox(height: 20),
-        Text(
-          'Crear cuenta',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 40),
-      ],
-    );
-  }
-}
-
 class _RegisterForm extends ConsumerWidget {
   const _RegisterForm();
 
@@ -108,6 +92,7 @@ class _RegisterForm extends ConsumerWidget {
     final registerForm = ref.watch(registerFormProvider);
     final authState = ref.watch(authProvider);
     final colors = Theme.of(context).colorScheme;
+    final Responsive responsive = Responsive.of(context);
 
     ref.listen(authProvider, (previous, next) {
       if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
@@ -134,15 +119,15 @@ class _RegisterForm extends ConsumerWidget {
     });
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(responsive.dp(24)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(responsive.dp(20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
+            blurRadius: responsive.dp(10),
+            spreadRadius: responsive.dp(2),
           ),
         ],
       ),
@@ -153,7 +138,7 @@ class _RegisterForm extends ConsumerWidget {
           else if (registerForm.errorMessage != null)
             _StatusMessage(message: registerForm.errorMessage!, isError: true),
 
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.hp(2)),
 
           CustomInputField(
             label: 'Nombre de usuario',
@@ -166,7 +151,7 @@ class _RegisterForm extends ConsumerWidget {
             isFormPosted: registerForm.isFormPosted,
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.hp(2)),
 
           CustomInputField(
             label: 'Correo electrónico',
@@ -180,7 +165,7 @@ class _RegisterForm extends ConsumerWidget {
             isFormPosted: registerForm.isFormPosted,
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.hp(2)),
 
           CustomInputField(
             label: 'Contraseña',
@@ -194,7 +179,7 @@ class _RegisterForm extends ConsumerWidget {
             isFormPosted: registerForm.isFormPosted,
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.hp(2)),
 
           CustomInputField(
             label: 'Confirmar contraseña',
@@ -212,7 +197,7 @@ class _RegisterForm extends ConsumerWidget {
             isFormPosted: registerForm.isFormPosted,
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: responsive.hp(3)),
 
           CustomFilledButton(
             text: 'Crear cuenta',
@@ -244,7 +229,7 @@ class _RegisterForm extends ConsumerWidget {
             buttonColor: colors.primary,
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: responsive.hp(3)),
 
           TextButton(
             onPressed: () =>
