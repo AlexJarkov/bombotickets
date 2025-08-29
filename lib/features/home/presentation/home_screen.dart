@@ -1,30 +1,93 @@
-import 'package:bombotickets/features/shared/widgets/side_menu.dart';
+import 'package:bombotickets/features/shared/utils/responsive.dart';
+import 'package:bombotickets/config/theme/theme.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
   static String name = 'home';
+
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: SideMenu(scaffoldKey: _scaffoldKey),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+    final res = Responsive.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryColor,
+            AppTheme.primaryColor.withOpacity(0.7),
+            Colors.white,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        title: const Text('Inicio'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: Text(
-            'Bienvenido',
-            style: Theme.of(context).textTheme.titleLarge,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(res.wp(6)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: res.hp(2)),
+
+              // Logo
+              Center(
+                child: Image.asset(
+                  'assets/images/logo_masterpass.png',
+                  width: res.wp(50),
+                  fit: BoxFit.contain,
+                ),
+              ),
+
+              SizedBox(height: res.hp(4)),
+
+              // Welcome Card
+              Container(
+                padding: EdgeInsets.all(res.wp(6)),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(res.wp(5)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: res.wp(2.5),
+                      spreadRadius: res.wp(0.5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.home,
+                      size: res.dp(6),
+                      color: AppTheme.primaryColor,
+                    ),
+                    SizedBox(height: res.hp(2)),
+                    Text(
+                      'Bienvenido a Bombotickets',
+                      style: TextStyle(
+                        fontSize: res.dp(2.5),
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.bodyFontColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: res.hp(2)),
+                    Text(
+                      'Gestiona tus tickets de manera fácil y eficiente',
+                      style: TextStyle(
+                        fontSize: res.dp(1.8),
+                        color: AppTheme.grey1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+            ],
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bombotickets/features/shared/utils/responsive.dart';
 
 class CustomFilledButton extends StatelessWidget {
   final String text;
@@ -20,36 +21,37 @@ class CustomFilledButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive.of(context);
     final colors = Theme.of(context).colorScheme;
     final backgroundColor = buttonColor ?? colors.primary;
 
     return SizedBox(
       width: double.infinity,
-      height: height,
+      height: responsive.hp(7),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           disabledBackgroundColor: backgroundColor.withOpacity(0.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(responsive.wp(2.5)),
           ),
           elevation: 0,
         ),
         onPressed: isEnabled && !isLoading ? onPressed : null,
         child: isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
+            ? SizedBox(
+                width: responsive.wp(6),
+                height: responsive.wp(6),
+                child: const CircularProgressIndicator(
                   color: Colors.white,
                   strokeWidth: 2,
                 ),
               )
             : Text(
                 text,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: responsive.dp(2.2),
                   fontWeight: FontWeight.bold,
                 ),
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bombotickets/features/shared/utils/responsive.dart';
 
 class CustomInputField extends StatelessWidget {
   final String label;
@@ -28,8 +29,9 @@ class CustomInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive.of(context);
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(responsive.wp(2.5)),
       borderSide: const BorderSide(color: Colors.transparent),
     );
 
@@ -41,10 +43,14 @@ class CustomInputField extends StatelessWidget {
           keyboardType: keyboardType,
           onChanged: onChanged,
           controller: controller,
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontSize: responsive.dp(2)),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: Theme.of(context).textTheme.bodyMedium,
+            labelStyle: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontSize: responsive.dp(1.8)),
             filled: true,
             fillColor: Colors.grey[200],
             border: border,
@@ -57,22 +63,28 @@ class CustomInputField extends StatelessWidget {
                     ),
                   )
                 : border,
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 12,
-              horizontal: 16,
+            contentPadding: EdgeInsets.symmetric(
+              vertical: responsive.hp(1.5),
+              horizontal: responsive.wp(4),
             ),
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: Colors.grey)
+                ? Icon(prefixIcon, color: Colors.grey, size: responsive.dp(3))
                 : null,
             suffixIcon: suffixIcon,
           ),
         ),
         if (errorMessage != null && isFormPosted)
           Padding(
-            padding: const EdgeInsets.only(top: 4, left: 12),
+            padding: EdgeInsets.only(
+              top: responsive.hp(0.5),
+              left: responsive.wp(3),
+            ),
             child: Text(
               errorMessage!,
-              style: TextStyle(color: Colors.red[700], fontSize: 12),
+              style: TextStyle(
+                color: Colors.red[700],
+                fontSize: responsive.dp(1.5),
+              ),
             ),
           ),
       ],

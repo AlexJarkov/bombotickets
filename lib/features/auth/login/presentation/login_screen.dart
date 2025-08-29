@@ -108,28 +108,20 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
     });
 
     return Container(
-      padding: EdgeInsets.all(responsive.dp(24)),
+      padding: EdgeInsets.all(responsive.wp(6)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(responsive.dp(20)),
+        borderRadius: BorderRadius.circular(responsive.wp(5)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: responsive.dp(10),
-            spreadRadius: responsive.dp(2),
+            blurRadius: responsive.wp(2.5),
+            spreadRadius: responsive.wp(0.5),
           ),
         ],
       ),
       child: Column(
         children: [
-          SizedBox(height: responsive.hp(2)),
-          Image.asset(
-            'assets/images/logo_masterpass.png',
-            width: responsive.wp(40),
-            height: responsive.hp(10),
-            fit: BoxFit.contain,
-          ),
-          SizedBox(height: responsive.hp(2)),
           if (authState.status == AuthStatus.authenticated)
             _StatusMessage(
               message: 'Sesión iniciada correctamente',
@@ -140,7 +132,10 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
           else if (loginForm.errorMessage != null)
             _StatusMessage(message: loginForm.errorMessage!, isError: true),
 
-          SizedBox(height: responsive.hp(2)),
+          if (authState.status == AuthStatus.authenticated ||
+              authState.errorMessage != null ||
+              loginForm.errorMessage != null)
+            SizedBox(height: responsive.hp(2)),
 
           CustomInputField(
             label: 'Código de Usuario',
@@ -153,7 +148,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
             isFormPosted: loginForm.isFormPosted,
           ),
 
-          SizedBox(height: responsive.hp(2)),
+          SizedBox(height: responsive.hp(2.5)),
 
           Focus(
             onFocusChange: (hasFocus) {
@@ -197,7 +192,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
             ),
           ),
 
-          SizedBox(height: responsive.hp(3)),
+          SizedBox(height: responsive.hp(4)),
 
           CustomFilledButton(
             text: 'Entrar',
@@ -232,20 +227,21 @@ class _StatusMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Responsive responsive = Responsive.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(responsive.wp(4)),
+      margin: EdgeInsets.only(bottom: responsive.hp(2)),
       decoration: BoxDecoration(
         color: isError ? Colors.red[100] : Colors.green[100],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(responsive.wp(2.5)),
         border: Border.all(color: isError ? Colors.red : Colors.green),
       ),
       child: Text(
         message,
         style: TextStyle(
           color: isError ? Colors.red[800] : Colors.green[800],
-          fontSize: 14,
+          fontSize: responsive.dp(1.8),
         ),
       ),
     );
