@@ -4,6 +4,7 @@ import 'package:bombotickets/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:bombotickets/features/tickets/presentation/tickets_screen.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final int initialIndex;
@@ -235,7 +236,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       case 1:
         return const _ClientesContent();
       case 2:
-        return const _ProductosContent();
+        return const TicketsScreen();
       case 3:
         return const _HomeContent(); // Profile se maneja con bottom sheet
       default:
@@ -457,69 +458,4 @@ class _ClientesContent extends StatelessWidget {
   }
 }
 
-class _ProductosContent extends StatelessWidget {
-  const _ProductosContent();
-
-  @override
-  Widget build(BuildContext context) {
-    final res = Responsive.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.7),
-            Colors.white,
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(res.wp(6)),
-          child: Column(
-            children: [
-              Text(
-                'Productos',
-                style: TextStyle(
-                  fontSize: res.dp(2.5),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: res.hp(4)),
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.all(res.wp(6)),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(res.wp(5)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: res.wp(2.5),
-                        spreadRadius: res.wp(0.5),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Pantalla de Productos\n(En construcción)',
-                      style: TextStyle(
-                        fontSize: res.dp(2),
-                        color: AppTheme.grey1,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Reemplazado por TicketsScreen
