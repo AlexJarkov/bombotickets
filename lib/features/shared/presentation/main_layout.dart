@@ -26,19 +26,18 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     _selectedIndex = widget.initialIndex;
   }
 
-  void _onItemTapped(int index) {
+  Future<void> _onItemTapped(int index) async {
+    // Si tocan Perfil, no cambiamos el índice; sólo mostramos el sheet
+    if (index == 3) {
+      await _showProfileBottomSheet();
+      return;
+    }
+
     if (_selectedIndex == index) return; // No hacer nada si es la misma pestaña
 
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    // Solo mostrar profile bottom sheet para el índice 3
-    if (index == 3) {
-      _showProfileBottomSheet();
-      // Volver al índice anterior después del bottom sheet
+    if (mounted) {
       setState(() {
-        _selectedIndex = 0; // Volver a Inicio
+        _selectedIndex = index;
       });
     }
   }
@@ -48,14 +47,8 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     final reduceMotion = ref.read(settingsProvider).reduceMotion;
 
     AnimationController? controller;
-    if (!reduceMotion) {
-      controller = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 300),
-        reverseDuration: const Duration(milliseconds: 200),
-      );
-    } else {
-      // Use a near-zero duration to avoid frame time clamp issues
+    if (reduceMotion) {
+      // Minimal duration to avoid frame-time clamp and effectively disable slide
       controller = AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1),
@@ -63,21 +56,24 @@ class _MainLayoutState extends ConsumerState<MainLayout>
       );
     }
 
-    await showModalBottomSheet(
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
+      isDismissible: true,
       backgroundColor: Colors.transparent,
       transitionAnimationController: controller,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(res.wp(6)),
-        decoration: BoxDecoration(
+      builder: (context) => SafeArea(
+        child: Material(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(res.wp(6)),
             topRight: Radius.circular(res.wp(6)),
           ),
-        ),
-        child: Column(
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: EdgeInsets.all(res.wp(6)),
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Handle bar
@@ -137,8 +133,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
               icon: Icons.settings,
               title: 'Configuración',
               onTap: () {
-                Navigator.pop(context);
-                context.push('/settings');
+                Navigator.of(context, rootNavigator: true).pop('settings');
               },
             ),
 
@@ -146,8 +141,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
               icon: Icons.help_outline,
               title: 'Ayuda',
               onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to help
+                Navigator.of(context, rootNavigator: true).pop('help');
               },
             ),
 
@@ -156,26 +150,43 @@ class _MainLayoutState extends ConsumerState<MainLayout>
               title: 'Cerrar sesión',
               isDestructive: true,
               onTap: () {
-                Navigator.pop(context);
-                ref.read(authProvider.notifier).logout();
-                context.go('/login');
+                Navigator.of(context, rootNavigator: true).pop('logout');
               },
             ),
 
             SizedBox(height: res.hp(2)),
           ],
         ),
+          ),
+        ),
       ),
     );
 
-    controller.dispose();
+    controller?.dispose();
+
+    // Handle actions after sheet is fully dismissed
+    if (!mounted) return;
+    switch (result) {
+      case 'settings':
+        context.push('/settings');
+        break;
+      case 'logout':
+        ref.read(authProvider.notifier).logout();
+        context.go('/login');
+        break;
+      case 'help':
+        // TODO: implement help route if needed
+        break;
+      default:
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final reduceMotion = ref.watch(settingsProvider).reduceMotion;
-
+    
     return Scaffold(
       body: AnimatedSwitcher(
         duration: reduceMotion
@@ -218,7 +229,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
+          onTap: (i) => _onItemTapped(i),
           type: BottomNavigationBarType.fixed,
           backgroundColor: Theme.of(context).colorScheme.surface,
           selectedItemColor: AppTheme.primaryColor,
@@ -287,6 +298,8 @@ class _ProfileOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final textColor = isDestructive ? cs.error : Theme.of(context).textTheme.bodyMedium?.color;
 
     return InkWell(
       onTap: onTap,
@@ -300,7 +313,7 @@ class _ProfileOption extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isDestructive ? Colors.red : AppTheme.primaryColor,
+              color: isDestructive ? cs.error : cs.primary,
               size: res.dp(2.5),
             ),
             SizedBox(width: res.wp(4)),
@@ -308,14 +321,14 @@ class _ProfileOption extends StatelessWidget {
               title,
               style: TextStyle(
                 fontSize: res.dp(1.8),
-                color: isDestructive ? Colors.red : AppTheme.bodyFontColor,
+                color: textColor,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const Spacer(),
             Icon(
               Icons.arrow_forward_ios,
-              color: AppTheme.grey1,
+              color: (Theme.of(context).textTheme.bodyMedium?.color ?? cs.onSurface).withOpacity(0.6),
               size: res.dp(1.8),
             ),
           ],
@@ -332,15 +345,22 @@ class _HomeContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.7),
-            Theme.of(context).scaffoldBackgroundColor,
-          ],
+          colors: isDark
+              ? const [
+                  Color(0xFF0B1E3B), // deep navy
+                  Color(0xFF091A32),
+                  Colors.transparent,
+                ]
+              : [
+                  AppTheme.primaryColor,
+                  AppTheme.primaryColor.withOpacity(0.7),
+                  Theme.of(context).scaffoldBackgroundColor,
+                ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -359,6 +379,8 @@ class _HomeContent extends StatelessWidget {
                   'assets/images/logo_masterpass.png',
                   width: res.wp(50),
                   fit: BoxFit.contain,
+                  color: isDark ? Colors.white : Colors.black,
+                  colorBlendMode: BlendMode.srcIn,
                 ),
               ),
 
@@ -427,15 +449,22 @@ class _ClientesContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.7),
-            Theme.of(context).scaffoldBackgroundColor,
-          ],
+          colors: isDark
+              ? const [
+                  Color(0xFF0B1E3B),
+                  Color(0xFF091A32),
+                  Colors.transparent,
+                ]
+              : [
+                  AppTheme.primaryColor,
+                  AppTheme.primaryColor.withOpacity(0.7),
+                  Theme.of(context).scaffoldBackgroundColor,
+                ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),

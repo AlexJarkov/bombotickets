@@ -10,6 +10,7 @@ class TicketsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Tickets hardcodeados para demo
     const tickets = [
       Ticket(
@@ -41,11 +42,17 @@ class TicketsScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.7),
-            Theme.of(context).scaffoldBackgroundColor,
-          ],
+          colors: isDark
+              ? const [
+                  Color(0xFF0B1E3B),
+                  Color(0xFF091A32),
+                  Colors.transparent,
+                ]
+              : [
+                  AppTheme.primaryColor,
+                  AppTheme.primaryColor.withOpacity(0.7),
+                  Theme.of(context).scaffoldBackgroundColor,
+                ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
