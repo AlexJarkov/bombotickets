@@ -3,9 +3,10 @@ import 'package:bombotickets/config/theme/theme.dart';
 import 'package:bombotickets/features/shared/widgets/home_content.dart';
 import 'package:bombotickets/features/shared/widgets/profile_bottom_sheet.dart';
 import 'package:bombotickets/features/tickets/presentation/tickets_screen.dart';
+import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final int initialIndex;
@@ -35,24 +36,57 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   }
 
   Future<void> _onItemTapped(int index) async {
-    // Si tocan Escanear (índice 2), navegamos a la pantalla de scanner
+    // Si tocan Escanear (índice 2)
     if (index == 2) {
-      context.push('/scanner');
+      // Vibración háptica ligera para el escáner
+      HapticFeedback.lightImpact();
+
+      // Si ya estamos en la página del escáner, no hacer nada
+      if (_selectedIndex == 2) return;
+
+      // Si no estamos en la página del escáner, navegar a ella
+      setState(() {
+        _selectedIndex = index;
+      });
+
+      await _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+      );
       return;
     }
 
-    // Si tocan Perfil, no cambiamos el índice; sólo mostramos el sheet
+    // Si tocan Perfil (índice 3)
     if (index == 3) {
-      await _showProfileBottomSheet();
+      // Vibración háptica ligera para el perfil
+      HapticFeedback.lightImpact();
+
+      // Si ya estamos en la página del perfil, no hacer nada
+      if (_selectedIndex == 3) return;
+
+      // Si no estamos en la página del perfil, navegar a ella
+      setState(() {
+        _selectedIndex = index;
+      });
+
+      await _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+      );
       return;
     }
 
     if (_selectedIndex == index) return; // No hacer nada si es la misma pestaña
 
+    // Vibración háptica para navegación normal
+    HapticFeedback.selectionClick();
+
     // Animar hacia la página seleccionada
     await _pageController.animateToPage(
       index,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOutCubic,
     );
   }
@@ -65,21 +99,14 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     }
   }
 
-  Future<void> _showProfileBottomSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const ProfileBottomSheet(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
@@ -87,54 +114,121 @@ class _MainLayoutState extends ConsumerState<MainLayout>
         children: [
           HomeContent(onItemTapped: _onItemTapped),
           const TicketsScreen(),
-          HomeContent(onItemTapped: _onItemTapped), // Scanner placeholder
-          HomeContent(onItemTapped: _onItemTapped), // Profile placeholder
+          // Escáner QR integrado en el PageView
+          const QRScannerContent(
+            showAppBar:
+                false, // No mostrar AppBar porque ya está en el MainLayout
+          ),
+          const ProfileContent(
+            showInPageView: true,
+          ), // Perfil integrado en el PageView
         ],
       ),
       bottomNavigationBar: Container(
+        margin: EdgeInsets.all(res.wp(4)),
         decoration: BoxDecoration(
+          color: isDark ? theme.colorScheme.surface : Colors.white,
+          borderRadius: BorderRadius.circular(res.wp(6)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: res.wp(3),
-              spreadRadius: res.wp(0.5),
+              color: isDark
+                  ? Colors.black.withOpacity(0.3)
+                  : AppTheme.primaryColor.withOpacity(0.15),
+              blurRadius: res.wp(6),
+              spreadRadius: res.wp(1),
+              offset: Offset(0, res.hp(0.5)),
             ),
           ],
+          border: Border.all(
+            color: theme.colorScheme.outline.withOpacity(0.1),
+            width: 1,
+          ),
         ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: Colors.grey,
-          selectedFontSize: res.dp(1.4),
-          unselectedFontSize: res.dp(1.2),
-          iconSize: res.dp(2.8),
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: res.dp(2.8)),
-              activeIcon: Icon(Icons.home, size: res.dp(3.2)),
-              label: 'Inicio',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.confirmation_number, size: res.dp(2.8)),
-              activeIcon: Icon(Icons.confirmation_number, size: res.dp(3.2)),
-              label: 'Tickets',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.qr_code_scanner, size: res.dp(2.8)),
-              activeIcon: Icon(Icons.qr_code_scanner, size: res.dp(3.2)),
-              label: 'Escanear',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person, size: res.dp(2.8)),
-              activeIcon: Icon(Icons.person, size: res.dp(3.2)),
-              label: 'Perfil',
-            ),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(res.wp(6)),
+          child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            backgroundColor: Colors.transparent,
+            selectedItemColor: AppTheme.primaryColor,
+            unselectedItemColor: theme.colorScheme.onSurface.withOpacity(0.4),
+            selectedFontSize: res.dp(1.3),
+            unselectedFontSize: res.dp(1.1),
+            iconSize: res.dp(2.4),
+            elevation: 0,
+            items: [
+              _buildBottomNavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Inicio',
+                res: res,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.confirmation_number_outlined,
+                activeIcon: Icons.confirmation_number,
+                label: 'Tickets',
+                res: res,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.qr_code_scanner_outlined,
+                activeIcon: Icons.qr_code_scanner,
+                label: 'Escanear',
+                res: res,
+                isSpecial: true,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.person_outline,
+                activeIcon: Icons.person,
+                label: 'Perfil',
+                res: res,
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  BottomNavigationBarItem _buildBottomNavItem({
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    required Responsive res,
+    bool isSpecial = false,
+  }) {
+    return BottomNavigationBarItem(
+      icon: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: res.hp(0.8),
+          horizontal: res.wp(3),
+        ),
+        decoration: isSpecial
+            ? BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(res.wp(3)),
+              )
+            : null,
+        child: Icon(icon, size: isSpecial ? res.dp(2.8) : res.dp(2.4)),
+      ),
+      activeIcon: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: res.hp(0.8),
+          horizontal: res.wp(3),
+        ),
+        decoration: BoxDecoration(
+          color: isSpecial
+              ? AppTheme.primaryColor
+              : AppTheme.primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(res.wp(3)),
+        ),
+        child: Icon(
+          activeIcon,
+          size: isSpecial ? res.dp(2.8) : res.dp(2.4),
+          color: isSpecial ? Colors.white : AppTheme.primaryColor,
+        ),
+      ),
+      label: label,
     );
   }
 }
