@@ -22,7 +22,7 @@ class LoginScreen extends ConsumerWidget {
             colors: [
               AppTheme.primaryColor,
               AppTheme.primaryColor.withOpacity(0.7),
-              Colors.white,
+              Theme.of(context).scaffoldBackgroundColor,
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -110,7 +110,7 @@ class __LoginFormState extends ConsumerState<_LoginForm> {
     return Container(
       padding: EdgeInsets.all(responsive.wp(6)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(responsive.wp(5)),
         boxShadow: [
           BoxShadow(

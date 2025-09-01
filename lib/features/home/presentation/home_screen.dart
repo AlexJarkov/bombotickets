@@ -17,7 +17,7 @@ class HomeScreen extends StatelessWidget {
           colors: [
             AppTheme.primaryColor,
             AppTheme.primaryColor.withOpacity(0.7),
-            Colors.white,
+            Theme.of(context).scaffoldBackgroundColor,
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -46,7 +46,7 @@ class HomeScreen extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(res.wp(6)),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(res.wp(5)),
                   boxShadow: [
                     BoxShadow(
@@ -69,7 +69,6 @@ class HomeScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: res.dp(2.5),
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.bodyFontColor,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -78,7 +77,11 @@ class HomeScreen extends StatelessWidget {
                       'Gestiona tus tickets de manera fácil y eficiente',
                       style: TextStyle(
                         fontSize: res.dp(1.8),
-                        color: AppTheme.grey1,
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.color
+                            ?.withOpacity(0.7),
                       ),
                       textAlign: TextAlign.center,
                     ),

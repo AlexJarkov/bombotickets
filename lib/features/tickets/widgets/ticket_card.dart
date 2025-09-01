@@ -20,7 +20,7 @@ class TicketCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: res.hp(2)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
         boxShadow: [
           BoxShadow(
@@ -29,7 +29,7 @@ class TicketCard extends StatelessWidget {
             offset: Offset(0, res.hp(0.2)),
           ),
         ],
-        border: Border.all(color: AppTheme.navBorderColor),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -71,7 +71,6 @@ class TicketCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: res.dp(2.0),
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.bodyFontColor,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

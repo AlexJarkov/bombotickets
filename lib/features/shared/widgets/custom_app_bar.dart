@@ -1,4 +1,3 @@
-import 'package:bombotickets/config/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 //import 'package:paybox_app/config/theme/theme_provider.dart';
@@ -10,7 +9,8 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     //final isDarkMode = ref.watch(themeNotifierProvider).isDarkMode;
     return AppBar(
-      backgroundColor: AppTheme.scaffoldBackground,
+      // Use themed background to support dark mode
+      backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       automaticallyImplyLeading: false, // Esta línea quita la flecha
       //title: Text("PaxBox"),
       //elevation: 2,

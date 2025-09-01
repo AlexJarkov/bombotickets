@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bombotickets/features/tickets/presentation/tickets_screen.dart';
+import 'package:bombotickets/features/settings/providers/settings_provider.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final int initialIndex;
@@ -15,7 +16,8 @@ class MainLayout extends ConsumerStatefulWidget {
   ConsumerState<MainLayout> createState() => _MainLayoutState();
 }
 
-class _MainLayoutState extends ConsumerState<MainLayout> {
+class _MainLayoutState extends ConsumerState<MainLayout>
+    with SingleTickerProviderStateMixin {
   late int _selectedIndex;
 
   @override
@@ -41,17 +43,35 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
   }
 
-  void _showProfileBottomSheet() {
+  Future<void> _showProfileBottomSheet() async {
     final res = Responsive.of(context);
+    final reduceMotion = ref.read(settingsProvider).reduceMotion;
 
-    showModalBottomSheet(
+    AnimationController? controller;
+    if (!reduceMotion) {
+      controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+        reverseDuration: const Duration(milliseconds: 200),
+      );
+    } else {
+      // Use a near-zero duration to avoid frame time clamp issues
+      controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1),
+        reverseDuration: const Duration(milliseconds: 1),
+      );
+    }
+
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      transitionAnimationController: controller,
       builder: (context) => Container(
         padding: EdgeInsets.all(res.wp(6)),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(res.wp(6)),
             topRight: Radius.circular(res.wp(6)),
@@ -65,7 +85,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               width: res.wp(12),
               height: res.hp(0.5),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Theme.of(context).dividerColor.withOpacity(0.6),
                 borderRadius: BorderRadius.circular(res.wp(2)),
               ),
             ),
@@ -94,14 +114,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                         style: TextStyle(
                           fontSize: res.dp(2.2),
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.bodyFontColor,
                         ),
                       ),
                       Text(
                         'Bombotickets',
                         style: TextStyle(
                           fontSize: res.dp(1.6),
-                          color: AppTheme.grey1,
+                          color:
+                              Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -118,7 +138,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
               title: 'Configuración',
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Navigate to settings
+                context.push('/settings');
               },
             ),
 
@@ -147,16 +167,22 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ),
       ),
     );
+
+    controller.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final reduceMotion = ref.watch(settingsProvider).reduceMotion;
 
     return Scaffold(
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
+        duration: reduceMotion
+            ? const Duration(milliseconds: 0)
+            : const Duration(milliseconds: 300),
         transitionBuilder: (Widget child, Animation<double> animation) {
+          if (reduceMotion) return child;
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
@@ -181,7 +207,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
@@ -194,7 +220,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           selectedItemColor: AppTheme.primaryColor,
           unselectedItemColor: AppTheme.grey1,
           selectedFontSize: res.dp(1.4),
@@ -313,7 +339,7 @@ class _HomeContent extends StatelessWidget {
           colors: [
             AppTheme.primaryColor,
             AppTheme.primaryColor.withOpacity(0.7),
-            Colors.white,
+            Theme.of(context).scaffoldBackgroundColor,
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -342,7 +368,7 @@ class _HomeContent extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(res.wp(6)),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(res.wp(5)),
                   boxShadow: [
                     BoxShadow(
@@ -365,7 +391,7 @@ class _HomeContent extends StatelessWidget {
                       style: TextStyle(
                         fontSize: res.dp(2.5),
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.bodyFontColor,
+                        // Use theme default color
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -374,7 +400,11 @@ class _HomeContent extends StatelessWidget {
                       'Gestiona tus tickets de manera fácil y eficiente',
                       style: TextStyle(
                         fontSize: res.dp(1.8),
-                        color: AppTheme.grey1,
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.color
+                            ?.withOpacity(0.7),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -404,7 +434,7 @@ class _ClientesContent extends StatelessWidget {
           colors: [
             AppTheme.primaryColor,
             AppTheme.primaryColor.withOpacity(0.7),
-            Colors.white,
+            Theme.of(context).scaffoldBackgroundColor,
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -420,7 +450,7 @@ class _ClientesContent extends StatelessWidget {
                 style: TextStyle(
                   fontSize: res.dp(2.5),
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 ),
               ),
               SizedBox(height: res.hp(4)),
@@ -428,7 +458,7 @@ class _ClientesContent extends StatelessWidget {
                 child: Container(
                   padding: EdgeInsets.all(res.wp(6)),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(res.wp(5)),
                     boxShadow: [
                       BoxShadow(
@@ -443,7 +473,11 @@ class _ClientesContent extends StatelessWidget {
                       'Pantalla de Clientes\n(En construcción)',
                       style: TextStyle(
                         fontSize: res.dp(2),
-                        color: AppTheme.grey1,
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.color
+                            ?.withOpacity(0.7),
                       ),
                       textAlign: TextAlign.center,
                     ),

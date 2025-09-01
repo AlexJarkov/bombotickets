@@ -44,7 +44,7 @@ class TicketsScreen extends StatelessWidget {
           colors: [
             AppTheme.primaryColor,
             AppTheme.primaryColor.withOpacity(0.7),
-            Colors.white,
+            Theme.of(context).scaffoldBackgroundColor,
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -70,7 +70,7 @@ class TicketsScreen extends StatelessWidget {
                 child: Container(
                   padding: EdgeInsets.all(res.wp(4)),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(res.wp(5)),
                     boxShadow: [
                       BoxShadow(
@@ -103,7 +103,7 @@ class TicketsScreen extends StatelessWidget {
       builder: (context) => Container(
         padding: EdgeInsets.all(res.wp(6)),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(res.wp(6)),
             topRight: Radius.circular(res.wp(6)),
@@ -117,7 +117,7 @@ class TicketsScreen extends StatelessWidget {
               width: res.wp(12),
               height: res.hp(0.5),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Theme.of(context).dividerColor.withOpacity(0.6),
                 borderRadius: BorderRadius.circular(res.wp(2)),
               ),
             ),
@@ -128,7 +128,6 @@ class TicketsScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: res.dp(2.2),
                 fontWeight: FontWeight.w700,
-                color: AppTheme.bodyFontColor,
               ),
             ),
             SizedBox(height: res.hp(2)),
@@ -151,7 +150,7 @@ class TicketsScreen extends StatelessWidget {
                 height: res.wp(60),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppTheme.greyInputBg,
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(res.wp(2)),
                 ),
                 child: const Text('QR no disponible'),
@@ -161,7 +160,11 @@ class TicketsScreen extends StatelessWidget {
             Text(
               'Muestra este QR al ingresar al evento',
               style: TextStyle(
-                color: AppTheme.grey1,
+                color: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.color
+                    ?.withOpacity(0.7),
                 fontSize: res.dp(1.6),
               ),
             ),

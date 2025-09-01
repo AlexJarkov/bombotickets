@@ -37,18 +37,18 @@ class CustomTextFormField extends StatelessWidget {
     const borderRadius = Radius.circular(15);
 
     return Container(
-      // padding: const EdgeInsets.only(bottom: 0, top: 15),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(topLeft: borderRadius, bottomLeft: borderRadius, bottomRight: borderRadius ),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.only(
+            topLeft: borderRadius,
+            bottomLeft: borderRadius,
+            bottomRight: borderRadius),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0,5)
-          )
-        ]
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 5))
+        ],
       ),
       child: TextFormField(
         onChanged: onChanged,
@@ -56,9 +56,10 @@ class CustomTextFormField extends StatelessWidget {
         onFieldSubmitted: onFieldSubmitted,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: const TextStyle( fontSize: 20, color: Colors.black54 ),
+        style: const TextStyle(fontSize: 20),
         decoration: InputDecoration(
-          floatingLabelStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+          floatingLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18),
           enabledBorder: border,
           focusedBorder: border,
           errorBorder: border.copyWith( borderSide: const BorderSide( color: Colors.transparent )),

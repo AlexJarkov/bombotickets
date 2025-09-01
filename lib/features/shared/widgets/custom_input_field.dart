@@ -52,7 +52,6 @@ class CustomInputField extends StatelessWidget {
               context,
             ).textTheme.bodyMedium?.copyWith(fontSize: responsive.dp(1.8)),
             filled: true,
-            fillColor: Colors.grey[200],
             border: border,
             enabledBorder: border,
             focusedBorder: focusedBorder

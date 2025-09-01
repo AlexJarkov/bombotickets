@@ -38,7 +38,7 @@ class SideMenu extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: res.wp(8),
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     child: Icon(
                       Icons.person,
                       size: res.dp(4),
@@ -51,7 +51,7 @@ class SideMenu extends ConsumerWidget {
                         ? 'Bienvenido'
                         : 'Invitado',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontSize: res.dp(2.2),
                       fontWeight: FontWeight.bold,
                     ),
@@ -59,7 +59,10 @@ class SideMenu extends ConsumerWidget {
                   Text(
                     'Bombotickets',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onPrimary
+                          .withOpacity(0.85),
                       fontSize: res.dp(1.6),
                     ),
                   ),

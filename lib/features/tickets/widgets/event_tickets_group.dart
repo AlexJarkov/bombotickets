@@ -51,7 +51,6 @@ class _EventTicketsGroupState extends State<EventTicketsGroup> {
                   style: TextStyle(
                     fontSize: res.dp(2.2),
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.bodyFontColor,
                   ),
                 ),
               ),
@@ -99,7 +98,7 @@ class _PilePreview extends StatelessWidget {
         margin: EdgeInsets.only(bottom: res.hp(2)),
         padding: EdgeInsets.all(res.wp(3)),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
           boxShadow: [
             BoxShadow(
@@ -108,7 +107,7 @@ class _PilePreview extends StatelessWidget {
               offset: Offset(0, res.hp(0.2)),
             )
           ],
-          border: Border.all(color: AppTheme.navBorderColor),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +141,8 @@ class _PilePreview extends StatelessWidget {
                               ),
                             ],
                             border: Border.all(
-                                color: AppTheme.navBorderColor, width: 0.5),
+                                color: Theme.of(context).dividerColor,
+                                width: 0.5),
                           ),
                         ),
                       ),
@@ -181,13 +181,19 @@ class _PilePreview extends StatelessWidget {
                     style: TextStyle(
                       fontSize: res.dp(2.0),
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.bodyFontColor,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.expand_more, color: AppTheme.grey1),
+                Icon(
+                  Icons.expand_more,
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.color
+                      ?.withOpacity(0.6),
+                ),
               ],
             ),
           ],

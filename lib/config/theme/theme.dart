@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   final bool isDarkMode;
@@ -40,139 +39,164 @@ class AppTheme {
   static const double borderRadiusNormal = 12.0;
   static const double borderRadiusLarge = 24.0;
 
-  ThemeData getTheme() => ThemeData(
-    useMaterial3: true,
-    brightness: isDarkMode ? Brightness.dark : Brightness.light,
-    colorSchemeSeed: primaryColor,
-    scaffoldBackgroundColor: scaffoldBackground,
+  ThemeData getTheme({bool reduceMotion = false}) {
+    final brightness = isDarkMode ? Brightness.dark : Brightness.light;
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: primaryColor,
+      brightness: brightness,
+    );
 
-    /// Typography
-    textTheme: TextTheme(
-      displayLarge: GoogleFonts.poppins(
-        fontSize: fontSizeH1,
-        fontWeight: FontWeight.w600,
-        color: bodyFontColor,
-      ),
-      displayMedium: GoogleFonts.poppins(
-        fontSize: fontSizeH2,
-        fontWeight: FontWeight.w600,
-        color: bodyFontColor,
-      ),
-      displaySmall: GoogleFonts.poppins(
-        fontSize: fontSizeH3,
-        fontWeight: FontWeight.w600,
-        color: bodyFontColor,
-      ),
-      bodyLarge: GoogleFonts.poppins(
-        fontSize: fontSizeBodyLarge,
-        fontWeight: FontWeight.w400,
-        color: bodyFontColor,
-      ),
-      bodyMedium: GoogleFonts.poppins(
-        fontSize: fontSizeBodyNormal,
-        fontWeight: FontWeight.w400,
-        color: bodyFontColor,
-      ),
-    ),
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor:
+          isDarkMode ? colorScheme.surface : scaffoldBackground,
 
-    /// Buttons
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: highlightBlue,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadiusSmall),
+      pageTransitionsTheme: reduceMotion
+          ? const PageTransitionsTheme(builders: {
+              TargetPlatform.android: _NoAnimationPageTransitionsBuilder(),
+              TargetPlatform.iOS: _NoAnimationPageTransitionsBuilder(),
+              TargetPlatform.macOS: _NoAnimationPageTransitionsBuilder(),
+              TargetPlatform.linux: _NoAnimationPageTransitionsBuilder(),
+              TargetPlatform.windows: _NoAnimationPageTransitionsBuilder(),
+              TargetPlatform.fuchsia: _NoAnimationPageTransitionsBuilder(),
+            })
+          : const PageTransitionsTheme(),
+
+      // Typography – use platform default fonts, only adjust sizes/weights if needed.
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
+          fontSize: fontSizeH1,
+          fontWeight: FontWeight.w600,
         ),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        textStyle: GoogleFonts.poppins(
+        displayMedium: TextStyle(
           fontSize: fontSizeH2,
           fontWeight: FontWeight.w600,
         ),
+        displaySmall: TextStyle(
+          fontSize: fontSizeH3,
+          fontWeight: FontWeight.w600,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: fontSizeBodyLarge,
+          fontWeight: FontWeight.w400,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: fontSizeBodyNormal,
+          fontWeight: FontWeight.w400,
+        ),
       ),
-    ),
+
+    /// Buttons
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: highlightBlue,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadiusSmall),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          textStyle: const TextStyle(
+            fontSize: fontSizeH2,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
 
     /// Input decoration
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 10.0,
-        horizontal: 16.0,
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDarkMode ? colorScheme.surfaceVariant : Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 10.0,
+          horizontal: 16.0,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(borderRadiusNormal),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(borderRadiusNormal),
+          borderSide: BorderSide(color: highlightBlue, width: 1.0),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(borderRadiusNormal),
+          borderSide: const BorderSide(color: Colors.red, width: 1.0),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(borderRadiusNormal),
+          borderSide: const BorderSide(color: Colors.red, width: 1.0),
+        ),
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(borderRadiusNormal),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(borderRadiusNormal),
-        borderSide: BorderSide(color: highlightBlue, width: 1.0),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(borderRadiusNormal),
-        borderSide: const BorderSide(color: Colors.red, width: 1.0),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(borderRadiusNormal),
-        borderSide: const BorderSide(color: Colors.red, width: 1.0),
-      ),
-    ),
 
     /// Card theme
-    cardTheme: CardThemeData(
-      color: Colors.white,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadiusNormal),
+      cardTheme: CardThemeData(
+        color: isDarkMode ? colorScheme.surface : Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadiusNormal),
+        ),
+        margin: EdgeInsets.zero,
       ),
-      margin: EdgeInsets.zero,
-    ),
 
     /// AppBar theme
-    appBarTheme: AppBarTheme(
-      backgroundColor: scaffoldBackground,
-      elevation: 0,
-      centerTitle: false,
-      titleTextStyle: GoogleFonts.poppins(
-        fontSize: fontSizeH1,
-        fontWeight: FontWeight.w600,
-        color: bodyFontColor,
+      appBarTheme: AppBarTheme(
+        backgroundColor: isDarkMode ? colorScheme.surface : scaffoldBackground,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: const TextStyle(
+          fontSize: fontSizeH1,
+          fontWeight: FontWeight.w600,
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   // Helper methods for custom widgets
   static TextStyle dataTitleTextStyle() {
-    return GoogleFonts.poppins(
+    return const TextStyle(
       fontSize: fontSizeH3,
       fontWeight: FontWeight.w600,
-      color: bodyFontColor,
     );
   }
 
   static TextStyle dataCurrencySmallTextStyle() {
-    return GoogleFonts.poppins(
+    return const TextStyle(
       fontSize: fontSizeBodyNormal,
       fontWeight: FontWeight.w400,
-      color: bodyFontColor,
     );
   }
 
   static TextStyle dataCurrencyMediumTextStyle() {
-    return GoogleFonts.poppins(
+    return const TextStyle(
       fontSize: fontSizeBodyMedium,
       fontWeight: FontWeight.w400,
-      color: bodyFontColor,
     );
   }
 
   static TextStyle dataSumLargeTextStyle() {
-    return GoogleFonts.poppins(
+    return const TextStyle(
       fontSize: fontSizeBodyLarge,
       fontWeight: FontWeight.w400,
-      color: bodyFontColor,
     );
   }
 
   AppTheme copyWith({bool? isDarkMode}) =>
       AppTheme(isDarkMode: isDarkMode ?? this.isDarkMode);
+}
+
+class _NoAnimationPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoAnimationPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
+  }
 }
