@@ -1,8 +1,8 @@
 import 'package:bombotickets/features/auth/login/presentation/login_screen.dart';
 import 'package:bombotickets/features/auth/register/presentation/register_screen.dart';
 import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dart';
-import 'package:bombotickets/features/shared/presentation/main_layout.dart';
-import 'package:bombotickets/features/settings/presentation/settings_screen.dart';
+import 'package:bombotickets/config/layout/main_layout.dart';
+import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 import 'package:go_router/go_router.dart';
 
 // GoRouter configuration
@@ -60,9 +60,9 @@ final appRouter = GoRouter(
     ),
 
     GoRoute(
-      path: '/settings',
-      name: SettingsScreen.name,
-      builder: (context, state) => const SettingsScreen(),
+      path: '/scanner',
+      name: 'scanner',
+      builder: (context, state) => const TicketScannerScreen(),
     ),
   ],
 );
