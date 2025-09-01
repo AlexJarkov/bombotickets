@@ -43,37 +43,68 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   }
 
   Future<void> _showProfileBottomSheet() async {
-    final res = Responsive.of(context);
     final reduceMotion = ref.read(settingsProvider).reduceMotion;
 
-    AnimationController? controller;
+    String? result;
     if (reduceMotion) {
-      // Minimal duration to avoid frame-time clamp and effectively disable slide
-      controller = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 1),
-        reverseDuration: const Duration(milliseconds: 1),
+      // No-anim sheet via general dialog anchored to bottom
+      result = await showGeneralDialog<String>(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: true,
+        barrierLabel: 'Cerrar',
+        barrierColor: Colors.black54.withOpacity(0.3),
+        transitionDuration: Duration.zero,
+        pageBuilder: (ctx, a1, a2) {
+          return SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: _buildProfileSheet(ctx),
+            ),
+          );
+        },
+      );
+    } else {
+      result = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        isDismissible: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => SafeArea(child: _buildProfileSheet(ctx)),
       );
     }
 
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      isDismissible: true,
-      backgroundColor: Colors.transparent,
-      transitionAnimationController: controller,
-      builder: (context) => SafeArea(
-        child: Material(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(res.wp(6)),
-            topRight: Radius.circular(res.wp(6)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: EdgeInsets.all(res.wp(6)),
-            child: Column(
+    // Handle actions after sheet is fully dismissed
+    if (!mounted) return;
+    switch (result) {
+      case 'settings':
+        context.push('/settings');
+        break;
+      case 'logout':
+        ref.read(authProvider.notifier).logout();
+        context.go('/login');
+        break;
+      case 'help':
+        // TODO: implement help route if needed
+        break;
+      default:
+        break;
+    }
+  }
+
+  Widget _buildProfileSheet(BuildContext context) {
+    final res = Responsive.of(context);
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(res.wp(6)),
+        topRight: Radius.circular(res.wp(6)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.all(res.wp(6)),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Handle bar
@@ -85,9 +116,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                 borderRadius: BorderRadius.circular(res.wp(2)),
               ),
             ),
-
             SizedBox(height: res.hp(3)),
-
             // Profile Header
             Row(
               children: [
@@ -116,8 +145,11 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                         'Bombotickets',
                         style: TextStyle(
                           fontSize: res.dp(1.6),
-                          color:
-                              Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.color
+                              ?.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -125,9 +157,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                 ),
               ],
             ),
-
             SizedBox(height: res.hp(3)),
-
             // Profile Options
             _ProfileOption(
               icon: Icons.settings,
@@ -136,7 +166,6 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                 Navigator.of(context, rootNavigator: true).pop('settings');
               },
             ),
-
             _ProfileOption(
               icon: Icons.help_outline,
               title: 'Ayuda',
@@ -144,7 +173,6 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                 Navigator.of(context, rootNavigator: true).pop('help');
               },
             ),
-
             _ProfileOption(
               icon: Icons.logout,
               title: 'Cerrar sesión',
@@ -153,33 +181,11 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                 Navigator.of(context, rootNavigator: true).pop('logout');
               },
             ),
-
             SizedBox(height: res.hp(2)),
           ],
         ),
-          ),
-        ),
       ),
     );
-
-    controller?.dispose();
-
-    // Handle actions after sheet is fully dismissed
-    if (!mounted) return;
-    switch (result) {
-      case 'settings':
-        context.push('/settings');
-        break;
-      case 'logout':
-        ref.read(authProvider.notifier).logout();
-        context.go('/login');
-        break;
-      case 'help':
-        // TODO: implement help route if needed
-        break;
-      default:
-        break;
-    }
   }
 
   @override
