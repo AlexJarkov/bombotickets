@@ -3,30 +3,12 @@ import 'package:bombotickets/features/auth/register/presentation/register_screen
 import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dart';
 import 'package:bombotickets/config/layout/main_layout.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
+import 'package:bombotickets/features/settings/presentation/settings_screen.dart';
 import 'package:go_router/go_router.dart';
 
 // GoRouter configuration
 final appRouter = GoRouter(
-  initialLocation: '/home',
-  // redirect: (context, state) async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   //await prefs.remove('token');
-  //   final token = prefs.getString('token');
-  //   log("TOKEN $token");
-  //   final loggingIn = state.matchedLocation == '/login';
-  //   final onAuthPage =
-  //       state.matchedLocation == '/login' ||
-  //       state.matchedLocation == '/register' ||
-  //       state.matchedLocation == '/splash';
-
-  //   // Si está logueado y quiere ir al login, redirige al home
-  //   if (token != null && loggingIn) return '/home';
-
-  //   // Si no está logueado y NO está en una página de auth, redirige al login
-  //   if (token == null && !onAuthPage) return '/login';
-
-  //   return null; // deja pasar
-  // },
+  initialLocation: '/splash',
   routes: [
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(
@@ -60,9 +42,21 @@ final appRouter = GoRouter(
     ),
 
     GoRoute(
+      path: '/perfil',
+      name: 'perfil',
+      builder: (context, state) => const MainLayout(initialIndex: 3),
+    ),
+
+    GoRoute(
       path: '/scanner',
       name: 'scanner',
       builder: (context, state) => const TicketScannerScreen(),
+    ),
+
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsScreen(),
     ),
   ],
 );

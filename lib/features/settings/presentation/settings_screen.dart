@@ -1,6 +1,9 @@
 import 'package:bombotickets/features/settings/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
 class SettingsScreen extends ConsumerWidget {
   static const String name = 'settings';
@@ -13,19 +16,48 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuración'),
+        title: AutoSizeText(
+          'Configuración',
+          style: GoogleFonts.poppins(
+            fontSize: AppTheme.fontSizeH3,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+        ),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingNormal,
+          vertical: AppTheme.spacingSmall,
+        ),
         children: [
           Card(
-            margin: const EdgeInsets.symmetric(vertical: 8),
+            margin: EdgeInsets.symmetric(vertical: AppTheme.spacingSmall),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const ListTile(
-                  title: Text('Tema de la app'),
-                  subtitle: Text('Selecciona cómo se adapta la interfaz'),
+                ListTile(
+                  title: AutoSizeText(
+                    'Tema de la app',
+                    style: GoogleFonts.poppins(
+                      fontSize: AppTheme.fontSizeBodyLarge,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                  ),
+                  subtitle: AutoSizeText(
+                    'Selecciona cómo se adapta la interfaz',
+                    style: GoogleFonts.inter(
+                      fontSize: AppTheme.fontSizeBodyNormal,
+                      color: AppTheme.grey1,
+                    ),
+                    maxLines: 1,
+                  ),
                 ),
                 RadioListTile<ThemeMode>(
                   title: const Text('Automático'),
@@ -58,7 +90,8 @@ class SettingsScreen extends ConsumerWidget {
             child: SwitchListTile(
               title: const Text('Reducir animaciones'),
               subtitle: const Text(
-                  'Limita transiciones y efectos para menor movimiento'),
+                'Limita transiciones y efectos para menor movimiento',
+              ),
               value: settings.reduceMotion,
               onChanged: (value) =>
                   ref.read(settingsProvider.notifier).setReduceMotion(value),

@@ -1,4 +1,4 @@
-import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import '../entities/ticket.dart';
@@ -30,8 +30,9 @@ class _EventTicketsGroupState extends State<EventTicketsGroup> {
     final res = Responsive.of(context);
 
     return AnimatedCrossFade(
-      crossFadeState:
-          _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+      crossFadeState: _expanded
+          ? CrossFadeState.showSecond
+          : CrossFadeState.showFirst,
       duration: const Duration(milliseconds: 250),
       firstChild: _PilePreview(
         eventName: widget.eventName,
@@ -62,10 +63,7 @@ class _EventTicketsGroupState extends State<EventTicketsGroup> {
           ),
           SizedBox(height: res.hp(1)),
           ...widget.tickets.map(
-            (t) => TicketCard(
-              ticket: t,
-              onShowQr: () => widget.onShowQr(t),
-            ),
+            (t) => TicketCard(ticket: t, onShowQr: () => widget.onShowQr(t)),
           ),
           SizedBox(height: res.hp(2)),
         ],
@@ -105,7 +103,7 @@ class _PilePreview extends StatelessWidget {
               color: Colors.black.withOpacity(0.06),
               blurRadius: res.wp(2),
               offset: Offset(0, res.hp(0.2)),
-            )
+            ),
           ],
           border: Border.all(color: Theme.of(context).dividerColor),
         ),
@@ -128,7 +126,8 @@ class _PilePreview extends StatelessWidget {
                           height: res.hp(16),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(
-                                AppTheme.borderRadiusNormal),
+                              AppTheme.borderRadiusNormal,
+                            ),
                             image: DecorationImage(
                               image: AssetImage(imageAsset),
                               fit: BoxFit.cover,
@@ -141,8 +140,9 @@ class _PilePreview extends StatelessWidget {
                               ),
                             ],
                             border: Border.all(
-                                color: Theme.of(context).dividerColor,
-                                width: 0.5),
+                              color: Theme.of(context).dividerColor,
+                              width: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -153,7 +153,9 @@ class _PilePreview extends StatelessWidget {
                     top: res.hp(0.5),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                          vertical: res.hp(0.4), horizontal: res.wp(2)),
+                        vertical: res.hp(0.4),
+                        horizontal: res.wp(2),
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.highlightBlue,
                         borderRadius: BorderRadius.circular(999),
@@ -188,11 +190,9 @@ class _PilePreview extends StatelessWidget {
                 ),
                 Icon(
                   Icons.expand_more,
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.color
-                      ?.withOpacity(0.6),
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withOpacity(0.6),
                 ),
               ],
             ),

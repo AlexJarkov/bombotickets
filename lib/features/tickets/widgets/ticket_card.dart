@@ -1,4 +1,4 @@
-import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import '../entities/ticket.dart';
@@ -7,11 +7,7 @@ class TicketCard extends StatelessWidget {
   final Ticket ticket;
   final VoidCallback onShowQr;
 
-  const TicketCard({
-    super.key,
-    required this.ticket,
-    required this.onShowQr,
-  });
+  const TicketCard({super.key, required this.ticket, required this.onShowQr});
 
   @override
   Widget build(BuildContext context) {
@@ -91,8 +87,9 @@ class TicketCard extends StatelessWidget {
                           horizontal: res.wp(3),
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.borderRadiusSmall),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.borderRadiusSmall,
+                          ),
                         ),
                       ),
                       onPressed: onShowQr,
@@ -137,10 +134,7 @@ class _StatusChip extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             status.label,
-            style: TextStyle(
-              color: status.color,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: status.color, fontWeight: FontWeight.w600),
           ),
         ],
       ),

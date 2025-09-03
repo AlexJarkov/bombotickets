@@ -44,3 +44,62 @@ class Ticket {
   });
 }
 
+// Nueva clase para eventos disponibles para compra
+class EventTicket {
+  final String id;
+  final String title;
+  final String artist;
+  final String venue;
+  final DateTime date;
+  final int price; // En pesos chilenos
+  final int originalPrice;
+  final String imageUrl;
+  final String category;
+  final int availableTickets;
+  final bool isResale; // true si es reventa
+
+  const EventTicket({
+    required this.id,
+    required this.title,
+    required this.artist,
+    required this.venue,
+    required this.date,
+    required this.price,
+    required this.originalPrice,
+    required this.imageUrl,
+    required this.category,
+    required this.availableTickets,
+    required this.isResale,
+  });
+
+  bool get hasDiscount => price < originalPrice;
+  int get discountPercentage =>
+      hasDiscount ? ((1 - (price / originalPrice)) * 100).round() : 0;
+}
+
+// Nueva clase para mis tickets
+class MyTicket {
+  final String id;
+  final String eventTitle;
+  final String venue;
+  final DateTime date;
+  final TicketStatus status;
+  final int purchasePrice;
+  final String qrData;
+  final String seatInfo;
+
+  const MyTicket({
+    required this.id,
+    required this.eventTitle,
+    required this.venue,
+    required this.date,
+    required this.status,
+    required this.purchasePrice,
+    required this.qrData,
+    required this.seatInfo,
+  });
+
+  bool get canSell =>
+      status == TicketStatus.activo && date.isAfter(DateTime.now());
+  bool get isExpired => date.isBefore(DateTime.now());
+}

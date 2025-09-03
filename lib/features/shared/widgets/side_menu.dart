@@ -1,7 +1,7 @@
 // lib/widgets/side_menu.dart
 import 'package:bombotickets/features/auth/providers/auth_provider.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
-import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -59,10 +59,9 @@ class SideMenu extends ConsumerWidget {
                   Text(
                     'Bombotickets',
                     style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimary
-                          .withOpacity(0.85),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withOpacity(0.85),
                       fontSize: res.dp(1.6),
                     ),
                   ),

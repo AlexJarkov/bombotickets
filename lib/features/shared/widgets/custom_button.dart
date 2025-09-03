@@ -1,4 +1,4 @@
-import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:flutter/material.dart';
 
 class CustomButton extends StatelessWidget {

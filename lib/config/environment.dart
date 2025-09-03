@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Environment {
@@ -6,5 +8,7 @@ class Environment {
 
   static Future<void> initEnvironment() async {
     await dotenv.load(fileName: ".env");
+    log("apiUrl: $apiUrl");
+    log("apiKey: $apiKey");
   }
 }

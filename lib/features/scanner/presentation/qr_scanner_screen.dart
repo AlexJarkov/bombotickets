@@ -3,39 +3,78 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
-import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/widgets/app_card.dart';
-import 'package:bombotickets/features/shared/widgets/app_toast.dart';
+import 'package:bombotickets/features/shared/widgets/gradient_background.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
+import 'package:motion_toast/motion_toast.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
-// Provider para manejar el estado del scanner
-final qrScannerProvider =
-    StateNotifierProvider<QRScannerNotifier, QRScannerState>((ref) {
-      return QRScannerNotifier();
+// Custom clipper para el overlay del escáner
+class ScannerOverlayClipper extends CustomClipper<Path> {
+  final double scanAreaSize;
+  final double borderRadius;
+
+  ScannerOverlayClipper({
+    required this.scanAreaSize,
+    required this.borderRadius,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+
+    // Área completa
+    path.addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    // Área de escaneo (agujero en el centro)
+    final scanAreaRect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height / 2),
+      width: scanAreaSize,
+      height: scanAreaSize,
+    );
+
+    final scanAreaPath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(scanAreaRect, Radius.circular(borderRadius)),
+      );
+
+    // Restar el área de escaneo del área total
+    return Path.combine(PathOperation.difference, path, scanAreaPath);
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+// Provider para manejar el estado del escáner de tickets
+final ticketScannerProvider =
+    StateNotifierProvider<TicketScannerNotifier, TicketScannerState>((ref) {
+      return TicketScannerNotifier();
     });
 
-class QRScannerState {
-  final String? lastScannedQR;
+class TicketScannerState {
+  final String? lastScannedTicket;
   final DateTime? scanTime;
   final bool isFlashOn;
-  final List<ScannedQRHistory> history;
+  final List<ScannedTicketHistory> history;
 
-  QRScannerState({
-    this.lastScannedQR,
+  TicketScannerState({
+    this.lastScannedTicket,
     this.scanTime,
     this.isFlashOn = false,
     this.history = const [],
   });
 
-  QRScannerState copyWith({
-    String? lastScannedQR,
+  TicketScannerState copyWith({
+    String? lastScannedTicket,
     DateTime? scanTime,
     bool? isFlashOn,
-    List<ScannedQRHistory>? history,
+    List<ScannedTicketHistory>? history,
   }) {
-    return QRScannerState(
-      lastScannedQR: lastScannedQR,
+    return TicketScannerState(
+      lastScannedTicket: lastScannedTicket,
       scanTime: scanTime,
       isFlashOn: isFlashOn ?? this.isFlashOn,
       history: history ?? this.history,
@@ -43,53 +82,49 @@ class QRScannerState {
   }
 }
 
-class ScannedQRHistory {
-  final String qrData;
+class ScannedTicketHistory {
+  final String ticketData;
   final DateTime scanTime;
-  final QRType type;
+  final TicketType type;
 
-  ScannedQRHistory({
-    required this.qrData,
+  ScannedTicketHistory({
+    required this.ticketData,
     required this.scanTime,
     required this.type,
   });
 }
 
-enum QRType { url, text, wifi, email, phone, other }
+enum TicketType { bomboticket, event, concert, other }
 
-class QRScannerNotifier extends StateNotifier<QRScannerState> {
-  QRScannerNotifier() : super(QRScannerState());
+class TicketScannerNotifier extends StateNotifier<TicketScannerState> {
+  TicketScannerNotifier() : super(TicketScannerState());
 
-  void onQRScanned(String qrData) {
+  void onTicketScanned(String ticketData) {
     final now = DateTime.now();
-    final type = _determineQRType(qrData);
+    final type = _determineTicketType(ticketData);
 
-    final newHistory = ScannedQRHistory(
-      qrData: qrData,
+    final newHistory = ScannedTicketHistory(
+      ticketData: ticketData,
       scanTime: now,
       type: type,
     );
 
     state = state.copyWith(
-      lastScannedQR: qrData,
+      lastScannedTicket: ticketData,
       scanTime: now,
-      history: [newHistory, ...state.history.take(19).toList()], // Keep last 20
+      history: [newHistory, ...state.history.take(19).toList()],
     );
   }
 
-  QRType _determineQRType(String data) {
-    if (data.startsWith('http://') || data.startsWith('https://')) {
-      return QRType.url;
-    } else if (data.startsWith('WIFI:')) {
-      return QRType.wifi;
-    } else if (data.startsWith('mailto:')) {
-      return QRType.email;
-    } else if (data.startsWith('tel:')) {
-      return QRType.phone;
-    } else if (data.contains('@') && data.contains('.')) {
-      return QRType.email;
+  TicketType _determineTicketType(String data) {
+    if (data.startsWith('BOMBO_TICKET_') || data.contains('bombotickets')) {
+      return TicketType.bomboticket;
+    } else if (data.contains('EVENT_') || data.contains('event')) {
+      return TicketType.event;
+    } else if (data.contains('CONCERT_') || data.contains('concert')) {
+      return TicketType.concert;
     } else {
-      return QRType.text;
+      return TicketType.other;
     }
   }
 
@@ -129,63 +164,137 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final theme = Theme.of(context);
-    final scannerState = ref.watch(qrScannerProvider);
+    final scannerState = ref.watch(ticketScannerProvider);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Escáner QR',
-          style: TextStyle(fontSize: res.dp(2.2), fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: theme.colorScheme.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              scannerState.isFlashOn ? Icons.flash_on : Icons.flash_off,
-            ),
-            onPressed: () {
-              _controller?.toggleTorch();
-              ref.read(qrScannerProvider.notifier).toggleFlash();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => _showHistoryBottomSheet(context, res, theme),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
           child: Column(
             children: [
-              // Scanner Area
-              SizedBox(
-                height: res.hp(50), // Fixed height for scanner
-                child: _buildScannerArea(res, theme),
+              // Header personalizado
+              Container(
+                padding: EdgeInsets.all(AppTheme.spacingMedium),
+                child: Row(
+                  children: [
+                    Material(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusLarge,
+                      ),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusLarge,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(AppTheme.spacingNormal),
+                          child: Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                            size: res.dp(2.4),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: AppTheme.spacingMedium),
+                    Expanded(
+                      child: AutoSizeText(
+                        'Escáner de Tickets',
+                        style: GoogleFonts.poppins(
+                          fontSize: AppTheme.fontSizeH2,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                    Material(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusLarge,
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          _controller?.toggleTorch();
+                          ref
+                              .read(ticketScannerProvider.notifier)
+                              .toggleFlash();
+                        },
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusLarge,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(AppTheme.spacingNormal),
+                          child: Icon(
+                            ref.watch(ticketScannerProvider).isFlashOn
+                                ? Icons.flash_on_rounded
+                                : Icons.flash_off_rounded,
+                            color: Colors.white,
+                            size: res.dp(2.4),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: AppTheme.spacingSmall),
+                    Material(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusLarge,
+                      ),
+                      child: InkWell(
+                        onTap: () =>
+                            _showHistoryBottomSheet(context, res, theme),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusLarge,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(AppTheme.spacingNormal),
+                          child: Icon(
+                            Icons.history_rounded,
+                            color: Colors.white,
+                            size: res.dp(2.4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              // Last Scanned QR Info
-              if (scannerState.lastScannedQR != null)
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: res.hp(20),
-                    maxHeight: res.hp(30),
+              // Contenido con scroll
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      SizedBox(height: AppTheme.spacingMedium),
+
+                      // Scanner Area
+                      Container(
+                        height: res.hp(55),
+                        margin: EdgeInsets.all(AppTheme.spacingNormal),
+                        child: _buildScannerArea(res, theme),
+                      ),
+
+                      // Last Scanned Ticket Info
+                      if (scannerState.lastScannedTicket != null)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: res.hp(15),
+                            maxHeight: res.hp(25),
+                          ),
+                          child: _buildTicketInfo(res, theme, scannerState),
+                        ),
+
+                      // Instructions
+                      _buildInstructions(res, theme),
+
+                      SizedBox(height: AppTheme.spacingLarge),
+                    ],
                   ),
-                  child: _buildQRInfo(res, theme, scannerState),
                 ),
-
-              // Instructions
-              _buildInstructions(res, theme),
-
-              // Add bottom padding for safe area
-              SizedBox(height: res.hp(2)),
+              ),
             ],
           ),
         ),
@@ -195,40 +304,48 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
 
   Widget _buildScannerArea(Responsive res, ThemeData theme) {
     return Container(
-      margin: EdgeInsets.all(res.wp(4)),
-      child: AppCard(
-        padding: EdgeInsets.all(res.wp(2)),
+      margin: EdgeInsets.all(AppTheme.spacingNormal),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
         child: Stack(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(res.wp(3)),
-              child: MobileScanner(
-                controller: _controller,
-                onDetect: (BarcodeCapture capture) {
-                  final List<Barcode> barcodes = capture.barcodes;
-                  for (final barcode in barcodes) {
-                    if (barcode.rawValue != null &&
-                        barcode.rawValue!.isNotEmpty) {
-                      // Vibrate on successful scan
-                      HapticFeedback.mediumImpact();
+            // Scanner
+            MobileScanner(
+              controller: _controller,
+              onDetect: (capture) {
+                final List<Barcode> barcodes = capture.barcodes;
+                for (final barcode in barcodes) {
+                  if (barcode.rawValue != null &&
+                      barcode.rawValue!.isNotEmpty) {
+                    HapticFeedback.mediumImpact();
 
-                      ref
-                          .read(qrScannerProvider.notifier)
-                          .onQRScanned(barcode.rawValue!);
+                    ref
+                        .read(ticketScannerProvider.notifier)
+                        .onTicketScanned(barcode.rawValue!);
 
-                      AppToast.showSuccess(
-                        context,
-                        title: 'QR Escaneado',
-                        description: 'Código QR detectado exitosamente',
-                      );
-                      break;
-                    }
+                    MotionToast.success(
+                      title: const Text('Ticket Escaneado'),
+                      description: const Text('Ticket detectado exitosamente'),
+                      toastDuration: const Duration(seconds: 3),
+                      width: 300,
+                    ).show(context);
+                    break;
                   }
-                },
-              ),
+                }
+              },
             ),
 
-            // Scanner Overlay
+            // Scanner Overlay mejorado
             _buildScannerOverlay(res, theme),
           ],
         ),
@@ -237,259 +354,420 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
   }
 
   Widget _buildScannerOverlay(Responsive res, ThemeData theme) {
-    return Center(
-          child: Container(
-            width: res.wp(70),
-            height: res.wp(70),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.primaryColor, width: 3),
-              borderRadius: BorderRadius.circular(res.wp(4)),
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        ),
+        child: Stack(
+          children: [
+            // Overlay oscuro con recorte
+            ClipPath(
+              clipper: ScannerOverlayClipper(
+                scanAreaSize: res.wp(70),
+                borderRadius: AppTheme.borderRadiusNormal,
+              ),
+              child: Container(color: Colors.black.withOpacity(0.7)),
             ),
-            child: Stack(
-              children: [
-                // Corner indicators
-                _buildCornerIndicator(
-                  res,
-                  Alignment.topLeft,
-                  BorderRadius.only(topLeft: Radius.circular(res.wp(4))),
-                ),
-                _buildCornerIndicator(
-                  res,
-                  Alignment.topRight,
-                  BorderRadius.only(topRight: Radius.circular(res.wp(4))),
-                ),
-                _buildCornerIndicator(
-                  res,
-                  Alignment.bottomLeft,
-                  BorderRadius.only(bottomLeft: Radius.circular(res.wp(4))),
-                ),
-                _buildCornerIndicator(
-                  res,
-                  Alignment.bottomRight,
-                  BorderRadius.only(bottomRight: Radius.circular(res.wp(4))),
-                ),
 
-                // Center focus indicator
-                Center(
-                  child: Container(
-                    width: res.wp(8),
-                    height: res.wp(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.center_focus_strong,
-                      color: AppTheme.primaryColor,
-                      size: res.dp(3),
-                    ),
+            // Área de escaneo con borde brillante
+            Center(
+              child: Container(
+                width: res.wp(70),
+                height: res.wp(70),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withOpacity(0.8),
+                    width: 3,
                   ),
+                  borderRadius: BorderRadius.circular(
+                    AppTheme.borderRadiusNormal,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
-              ],
+                child: Stack(
+                  children: [
+                    // Esquinas animadas
+                    _buildAnimatedCorner(res, isTopLeft: true),
+                    _buildAnimatedCorner(res, isTopRight: true),
+                    _buildAnimatedCorner(res, isBottomLeft: true),
+                    _buildAnimatedCorner(res, isBottomRight: true),
+                  ],
+                ),
+              ),
+            ),
+
+            // Línea de escaneo animada
+            Center(
+              child: Container(
+                width: res.wp(70),
+                height: res.wp(70),
+                child: _buildScanLine(res),
+              ),
+            ),
+
+            // Texto de instrucciones
+            Positioned(
+              bottom: res.hp(12),
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingNormal,
+                ),
+                child: Column(
+                  children: [
+                    AutoSizeText(
+                      'Coloca el código QR del ticket',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: AppTheme.fontSizeBodyLarge,
+                        fontWeight: FontWeight.w600,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.8),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                    ),
+                    SizedBox(height: AppTheme.spacingSmall),
+                    AutoSizeText(
+                      'dentro del área marcada',
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: AppTheme.fontSizeBodyNormal,
+                        fontWeight: FontWeight.w400,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.8),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedCorner(
+    Responsive res, {
+    bool isTopLeft = false,
+    bool isTopRight = false,
+    bool isBottomLeft = false,
+    bool isBottomRight = false,
+  }) {
+    return Positioned(
+          top: isTopLeft || isTopRight ? -1.5 : null,
+          bottom: isBottomLeft || isBottomRight ? -1.5 : null,
+          left: isTopLeft || isBottomLeft ? -1.5 : null,
+          right: isTopRight || isBottomRight ? -1.5 : null,
+          child: Container(
+            width: res.wp(8),
+            height: res.wp(8),
+            decoration: BoxDecoration(
+              border: Border(
+                top: (isTopLeft || isTopRight)
+                    ? BorderSide(color: Colors.white, width: 4)
+                    : BorderSide.none,
+                bottom: (isBottomLeft || isBottomRight)
+                    ? BorderSide(color: Colors.white, width: 4)
+                    : BorderSide.none,
+                left: (isTopLeft || isBottomLeft)
+                    ? BorderSide(color: Colors.white, width: 4)
+                    : BorderSide.none,
+                right: (isTopRight || isBottomRight)
+                    ? BorderSide(color: Colors.white, width: 4)
+                    : BorderSide.none,
+              ),
             ),
           ),
         )
         .animate(onPlay: (controller) => controller.repeat())
-        .scaleXY(begin: 0.98, end: 1.02, duration: 2000.ms)
-        .then()
-        .scaleXY(begin: 1.02, end: 0.98, duration: 2000.ms);
+        .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(0.5));
   }
 
-  Widget _buildCornerIndicator(
-    Responsive res,
-    Alignment alignment,
-    BorderRadius borderRadius,
-  ) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: res.wp(10),
-        height: res.wp(10),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryColor,
-          borderRadius: borderRadius,
-        ),
-      ),
-    );
+  Widget _buildScanLine(Responsive res) {
+    return ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  AppTheme.primaryColor.withOpacity(0.3),
+                  AppTheme.primaryColor.withOpacity(0.7),
+                  AppTheme.primaryColor.withOpacity(0.3),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.4, 0.5, 0.6, 1.0],
+              ),
+            ),
+            height: 3,
+            margin: EdgeInsets.symmetric(horizontal: AppTheme.spacingSmall),
+          ),
+        )
+        .animate(onPlay: (controller) => controller.repeat())
+        .moveY(
+          begin: -res.wp(30),
+          end: res.wp(30),
+          duration: 2000.ms,
+          curve: Curves.easeInOut,
+        );
   }
 
-  Widget _buildQRInfo(
+  Widget _buildTicketInfo(
     Responsive res,
     ThemeData theme,
-    QRScannerState scannerState,
+    TicketScannerState state,
   ) {
-    final qrData = scannerState.lastScannedQR!;
-    final scanTime = scannerState.scanTime!;
-    final qrType = ref
-        .read(qrScannerProvider.notifier)
-        ._determineQRType(qrData);
+    if (state.lastScannedTicket == null) return const SizedBox.shrink();
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: res.wp(4), vertical: res.hp(1)),
-      child: AppCard(
-        animationDelay: 200.ms,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  _getQRTypeIcon(qrType),
-                  color: AppTheme.primaryColor,
-                  size: res.dp(2.5),
-                ),
-                SizedBox(width: res.wp(3)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Último QR Escaneado',
-                        style: TextStyle(
-                          fontSize: res.dp(1.6),
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      Text(
-                        '${scanTime.day}/${scanTime.month}/${scanTime.year} ${scanTime.hour}:${scanTime.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          fontSize: res.dp(1.2),
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
+    final ticketData = state.lastScannedTicket!;
+    final scanTime = state.scanTime!;
+
+    return AppCard(
+      margin: EdgeInsets.all(AppTheme.spacingNormal),
+      padding: EdgeInsets.all(AppTheme.spacingNormal),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.confirmation_number_rounded,
+                color: AppTheme.primaryColor,
+                size: res.dp(3),
+              ),
+              SizedBox(width: AppTheme.spacingSmall),
+              Expanded(
+                child: AutoSizeText(
+                  'Último ticket escaneado',
+                  style: GoogleFonts.poppins(
+                    fontSize: AppTheme.fontSizeBodyLarge,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.bodyFontColor,
                   ),
+                  maxLines: 1,
                 ),
-              ],
+              ),
+            ],
+          ),
+
+          SizedBox(height: AppTheme.spacingSmall),
+
+          AutoSizeText(
+            '${scanTime.day}/${scanTime.month}/${scanTime.year} - ${scanTime.hour.toString().padLeft(2, '0')}:${scanTime.minute.toString().padLeft(2, '0')}',
+            style: GoogleFonts.inter(
+              fontSize: AppTheme.fontSizeBodyNormal,
+              color: AppTheme.grey1,
             ),
+            maxLines: 1,
+          ),
 
-            SizedBox(height: res.hp(1.5)),
+          SizedBox(height: AppTheme.spacingSmall),
 
-            Container(
-              constraints: BoxConstraints(
-                maxHeight: res.hp(8), // Limit height to prevent overflow
-              ),
-              padding: EdgeInsets.all(res.wp(3)),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(res.wp(2)),
-                border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                ),
-              ),
-              child: SingleChildScrollView(
-                child: SelectableText(
-                  qrData,
-                  style: TextStyle(
-                    fontSize: res.dp(1.4),
-                    fontFamily: 'monospace',
-                  ),
-                ),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(AppTheme.spacingSmall),
+            decoration: BoxDecoration(
+              color: AppTheme.greyInputBg,
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+            ),
+            child: SelectableText(
+              ticketData,
+              style: GoogleFonts.sourceCodePro(
+                fontSize: AppTheme.fontSizeBodyNormal,
+                color: AppTheme.bodyFontColor,
               ),
             ),
+          ),
 
-            SizedBox(height: res.hp(1.5)),
+          SizedBox(height: AppTheme.spacingNormal),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: qrData));
-                      AppToast.showSuccess(
-                        context,
-                        title: 'Copiado',
-                        description: 'Contenido copiado al portapapeles',
-                      );
-                    },
-                    icon: Icon(Icons.copy, size: res.dp(1.8)),
-                    label: Text(
-                      'Copiar',
-                      style: TextStyle(fontSize: res.dp(1.4)),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: res.hp(1)),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: ticketData));
+                    MotionToast.success(
+                      title: const Text('Copiado'),
+                      description: const Text('Ticket copiado al portapapeles'),
+                      toastDuration: const Duration(seconds: 2),
+                      width: 300,
+                    ).show(context);
+                  },
+                  icon: const Icon(Icons.copy_rounded),
+                  label: AutoSizeText(
+                    'Copiar',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusSmall,
+                      ),
                     ),
                   ),
                 ),
-                if (qrType == QRType.url) ...[
-                  SizedBox(width: res.wp(3)),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        AppToast.showInfo(
-                          context,
-                          title: 'URL detectada',
-                          description: 'Función de abrir URL próximamente',
-                        );
-                      },
-                      icon: Icon(Icons.open_in_new, size: res.dp(1.8)),
-                      label: Text(
-                        'Abrir',
-                        style: TextStyle(fontSize: res.dp(1.4)),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primaryColor,
-                        padding: EdgeInsets.symmetric(vertical: res.hp(1)),
+              ),
+
+              SizedBox(width: AppTheme.spacingSmall),
+
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _validateTicket(ticketData),
+                  icon: const Icon(Icons.verified_rounded),
+                  label: AutoSizeText(
+                    'Validar',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: const BorderSide(color: AppTheme.primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusSmall,
                       ),
                     ),
                   ),
-                ],
-              ],
-            ),
-          ],
-        ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
-
-  IconData _getQRTypeIcon(QRType type) {
-    switch (type) {
-      case QRType.url:
-        return Icons.link;
-      case QRType.wifi:
-        return Icons.wifi;
-      case QRType.email:
-        return Icons.email;
-      case QRType.phone:
-        return Icons.phone;
-      case QRType.text:
-        return Icons.text_fields;
-      case QRType.other:
-        return Icons.qr_code;
-    }
+    ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.3);
   }
 
   Widget _buildInstructions(Responsive res, ThemeData theme) {
-    return Container(
-      padding: EdgeInsets.all(res.wp(4)),
-      child: AppCard(
-        color: AppTheme.primaryColor.withOpacity(0.05),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline,
-              color: AppTheme.primaryColor,
-              size: res.dp(2.5),
-            ),
-            SizedBox(width: res.wp(3)),
-            Expanded(
-              child: Text(
-                'Apunta la cámara hacia cualquier código QR para escanearlo',
-                style: TextStyle(
-                  fontSize: res.dp(1.5),
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                ),
+    return AppCard(
+      margin: EdgeInsets.all(AppTheme.spacingNormal),
+      padding: EdgeInsets.all(AppTheme.spacingNormal),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppTheme.primaryColor,
+                size: res.dp(2.5),
               ),
-            ),
-          ],
-        ),
+              SizedBox(width: AppTheme.spacingSmall),
+              AutoSizeText(
+                'Instrucciones para escanear tickets',
+                style: GoogleFonts.poppins(
+                  fontSize: AppTheme.fontSizeBodyLarge,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.bodyFontColor,
+                ),
+                maxLines: 1,
+              ),
+            ],
+          ),
+
+          SizedBox(height: AppTheme.spacingSmall),
+
+          _buildInstructionItem(
+            '1. Mantén la cámara estable',
+            'Apunta directamente al código QR del ticket',
+            Icons.camera_alt_rounded,
+          ),
+
+          _buildInstructionItem(
+            '2. Asegúrate de tener buena iluminación',
+            'Usa el flash si es necesario',
+            Icons.wb_sunny_rounded,
+          ),
+
+          _buildInstructionItem(
+            '3. Mantén una distancia adecuada',
+            'Ni muy cerca ni muy lejos del código',
+            Icons.zoom_out_map_rounded,
+          ),
+
+          _buildInstructionItem(
+            '4. Verifica la validez del ticket',
+            'Usa el botón "Validar" después de escanear',
+            Icons.verified_rounded,
+          ),
+        ],
       ),
-    ).animate().fadeIn(duration: 800.ms, delay: 600.ms);
+    );
+  }
+
+  Widget _buildInstructionItem(String title, String subtitle, IconData icon) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSmall / 2),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.grey1, size: 20),
+          SizedBox(width: AppTheme.spacingSmall),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AutoSizeText(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.bodyFontColor,
+                  ),
+                  maxLines: 1,
+                ),
+                AutoSizeText(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    color: AppTheme.grey1,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _validateTicket(String ticketData) {
+    final type = ref
+        .read(ticketScannerProvider.notifier)
+        ._determineTicketType(ticketData);
+
+    // TODO: Implementar validación real con backend
+    MotionToast.success(
+      title: const Text('Ticket Válido'),
+      description: Text('Tipo: ${type.name.toUpperCase()}'),
+      toastDuration: const Duration(seconds: 3),
+      width: 300,
+    ).show(context);
   }
 
   void _showHistoryBottomSheet(
@@ -497,7 +775,7 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
     Responsive res,
     ThemeData theme,
   ) {
-    final scannerState = ref.read(qrScannerProvider);
+    final history = ref.read(ticketScannerProvider).history;
 
     showModalBottomSheet(
       context: context,
@@ -506,100 +784,89 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
       builder: (context) => Container(
         height: res.hp(70),
         decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(res.wp(6))),
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTheme.borderRadiusLarge),
+          ),
         ),
         child: Column(
           children: [
+            // Handle
             Container(
-              padding: EdgeInsets.all(res.wp(4)),
+              margin: EdgeInsets.symmetric(vertical: AppTheme.spacingSmall),
+              width: res.wp(12),
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.grey1,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: EdgeInsets.all(AppTheme.spacingNormal),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Historial de Escaneos',
-                    style: TextStyle(
-                      fontSize: res.dp(2),
+                  AutoSizeText(
+                    'Historial de Tickets',
+                    style: GoogleFonts.poppins(
+                      fontSize: AppTheme.fontSizeH3,
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
                   ),
-                  IconButton(
-                    onPressed: () {
-                      ref.read(qrScannerProvider.notifier).clearHistory();
-                      Navigator.pop(context);
-                      AppToast.showInfo(
-                        context,
-                        title: 'Historial limpiado',
-                        description: 'Se eliminaron todos los registros',
-                      );
-                    },
-                    icon: const Icon(Icons.delete_outline),
-                  ),
+                  if (history.isNotEmpty)
+                    TextButton(
+                      onPressed: () {
+                        ref.read(ticketScannerProvider.notifier).clearHistory();
+                        Navigator.pop(context);
+                      },
+                      child: AutoSizeText(
+                        'Limpiar',
+                        style: GoogleFonts.inter(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
                 ],
               ),
             ),
+
+            // History list
             Expanded(
-              child: scannerState.history.isEmpty
+              child: history.isEmpty
                   ? Center(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.history,
-                            size: res.dp(6),
-                            color: theme.colorScheme.onSurface.withOpacity(0.3),
+                            Icons.confirmation_number_rounded,
+                            size: res.dp(8),
+                            color: AppTheme.grey1,
                           ),
-                          SizedBox(height: res.hp(2)),
-                          Text(
-                            'No hay escaneos guardados',
-                            style: TextStyle(
-                              fontSize: res.dp(1.8),
-                              color: theme.colorScheme.onSurface.withOpacity(
-                                0.6,
-                              ),
+                          SizedBox(height: AppTheme.spacingNormal),
+                          AutoSizeText(
+                            'No hay tickets escaneados',
+                            style: GoogleFonts.inter(
+                              fontSize: AppTheme.fontSizeBodyLarge,
+                              color: AppTheme.grey1,
                             ),
+                            maxLines: 1,
                           ),
                         ],
                       ),
                     )
                   : ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: res.wp(4)),
-                      itemCount: scannerState.history.length,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingNormal,
+                      ),
+                      itemCount: history.length,
                       itemBuilder: (context, index) {
-                        final item = scannerState.history[index];
-                        return AppCard(
-                          margin: EdgeInsets.only(bottom: res.hp(1)),
-                          child: ListTile(
-                            leading: Icon(
-                              _getQRTypeIcon(item.type),
-                              color: AppTheme.primaryColor,
-                            ),
-                            title: Text(
-                              item.qrData.length > 50
-                                  ? '${item.qrData.substring(0, 50)}...'
-                                  : item.qrData,
-                              style: TextStyle(fontSize: res.dp(1.6)),
-                            ),
-                            subtitle: Text(
-                              '${item.scanTime.day}/${item.scanTime.month}/${item.scanTime.year} ${item.scanTime.hour}:${item.scanTime.minute.toString().padLeft(2, '0')}',
-                              style: TextStyle(fontSize: res.dp(1.3)),
-                            ),
-                            trailing: IconButton(
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: item.qrData),
-                                );
-                                AppToast.showSuccess(
-                                  context,
-                                  title: 'Copiado',
-                                  description:
-                                      'Contenido copiado al portapapeles',
-                                );
-                              },
-                              icon: const Icon(Icons.copy),
-                            ),
-                          ),
-                        );
+                        final item = history[index];
+                        return _buildHistoryItem(item, res, theme);
                       },
                     ),
             ),
@@ -608,24 +875,104 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
       ),
     );
   }
+
+  Widget _buildHistoryItem(
+    ScannedTicketHistory item,
+    Responsive res,
+    ThemeData theme,
+  ) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: AppTheme.spacingSmall / 2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+      ),
+      child: ListTile(
+        leading: Icon(
+          _getIconForTicketType(item.type),
+          color: AppTheme.primaryColor,
+        ),
+        title: AutoSizeText(
+          item.ticketData.length > 30
+              ? '${item.ticketData.substring(0, 30)}...'
+              : item.ticketData,
+          style: GoogleFonts.inter(
+            fontSize: AppTheme.fontSizeBodyNormal,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+        ),
+        subtitle: AutoSizeText(
+          '${item.scanTime.day}/${item.scanTime.month}/${item.scanTime.year} - ${item.scanTime.hour.toString().padLeft(2, '0')}:${item.scanTime.minute.toString().padLeft(2, '0')}',
+          style: GoogleFonts.inter(
+            fontSize: AppTheme.fontSizeBodyNormal,
+            color: AppTheme.grey1,
+          ),
+          maxLines: 1,
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.copy_rounded),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: item.ticketData));
+            MotionToast.success(
+              title: const Text('Copiado'),
+              description: const Text('Ticket copiado al portapapeles'),
+              toastDuration: const Duration(seconds: 2),
+              width: 300,
+            ).show(context);
+          },
+        ),
+        onTap: () {
+          // Reutilizar el ticket del historial
+          ref
+              .read(ticketScannerProvider.notifier)
+              .onTicketScanned(item.ticketData);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  IconData _getIconForTicketType(TicketType type) {
+    switch (type) {
+      case TicketType.bomboticket:
+        return Icons.local_activity_rounded;
+      case TicketType.event:
+        return Icons.event_rounded;
+      case TicketType.concert:
+        return Icons.music_note_rounded;
+      case TicketType.other:
+        return Icons.qr_code_rounded;
+    }
+  }
 }
 
-// Widget reutilizable para el contenido del escáner
-class QRScannerContent extends ConsumerStatefulWidget {
+// Widget de contenido para usar en el PageView del MainLayout
+class QRScannerContent extends ConsumerWidget {
   final bool showAppBar;
-  final VoidCallback? onHistoryTap;
 
-  const QRScannerContent({
-    super.key,
-    this.showAppBar = true,
-    this.onHistoryTap,
-  });
+  const QRScannerContent({super.key, this.showAppBar = true});
 
   @override
-  ConsumerState<QRScannerContent> createState() => _QRScannerContentState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (showAppBar) {
+      return const TicketScannerScreen();
+    } else {
+      // Versión sin AppBar para el PageView
+      return const TicketScannerScreenContent();
+    }
+  }
 }
 
-class _QRScannerContentState extends ConsumerState<QRScannerContent> {
+class TicketScannerScreenContent extends ConsumerStatefulWidget {
+  const TicketScannerScreenContent({super.key});
+
+  @override
+  ConsumerState<TicketScannerScreenContent> createState() =>
+      _TicketScannerScreenContentState();
+}
+
+class _TicketScannerScreenContentState
+    extends ConsumerState<TicketScannerScreenContent> {
   MobileScannerController? _controller;
 
   @override
@@ -644,114 +991,188 @@ class _QRScannerContentState extends ConsumerState<QRScannerContent> {
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final theme = Theme.of(context);
-    final scannerState = ref.watch(qrScannerProvider);
+    final scannerState = ref.watch(ticketScannerProvider);
 
-    final body = SafeArea(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+    return GradientBackground(
+      child: SafeArea(
         child: Column(
           children: [
-            // Scanner Area
-            SizedBox(
-              height: res.hp(50), // Fixed height for scanner
-              child: _buildScannerArea(res, theme),
+            // Header moderno con glassmorphism
+            Container(
+              padding: EdgeInsets.all(AppTheme.spacingNormal),
+              margin: EdgeInsets.all(AppTheme.spacingNormal),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AutoSizeText(
+                          'Escáner QR',
+                          style: GoogleFonts.poppins(
+                            fontSize: AppTheme.fontSizeH3,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                        ),
+                        SizedBox(height: AppTheme.spacingSmall / 2),
+                        AutoSizeText(
+                          'Escanea tickets rápidamente',
+                          style: GoogleFonts.inter(
+                            fontSize: AppTheme.fontSizeBodyNormal,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      // Flash button con estilo moderno
+                      Container(
+                        decoration: BoxDecoration(
+                          color: scannerState.isFlashOn
+                              ? Colors.white.withOpacity(0.3)
+                              : Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.borderRadiusNormal,
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            scannerState.isFlashOn
+                                ? Icons.flash_on_rounded
+                                : Icons.flash_off_rounded,
+                            color: Colors.white,
+                            size: res.dp(2.5),
+                          ),
+                          onPressed: () {
+                            _controller?.toggleTorch();
+                            ref
+                                .read(ticketScannerProvider.notifier)
+                                .toggleFlash();
+                          },
+                        ),
+                      ),
+                      SizedBox(width: AppTheme.spacingSmall),
+                      // History button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.borderRadiusNormal,
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.history_rounded,
+                            color: Colors.white,
+                            size: res.dp(2.5),
+                          ),
+                          onPressed: () =>
+                              _showHistoryBottomSheet(context, res, theme),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
 
-            // Last Scanned QR Info
-            if (scannerState.lastScannedQR != null)
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: res.hp(20),
-                  maxHeight: res.hp(30),
+            // Contenido expandible con scanner moderno
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Scanner Area moderno
+                    Container(
+                      height: res.hp(50),
+                      margin: EdgeInsets.all(AppTheme.spacingNormal),
+                      child: _buildModernScannerArea(res, theme),
+                    ),
+
+                    // Stats rápidas
+                    _buildQuickStats(res, theme, scannerState),
+
+                    // Last Scanned Ticket Info
+                    if (scannerState.lastScannedTicket != null)
+                      _buildModernTicketInfo(res, theme, scannerState),
+
+                    SizedBox(height: AppTheme.spacingLarge),
+                  ],
                 ),
-                child: _buildQRInfo(res, theme, scannerState),
               ),
-
-            // Instructions
-            _buildInstructions(res, theme),
-
-            // Add bottom padding for safe area
-            SizedBox(height: res.hp(2)),
+            ),
           ],
         ),
       ),
     );
+  }
 
-    if (!widget.showAppBar) {
-      return body;
-    }
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Escáner QR',
-          style: TextStyle(fontSize: res.dp(2.2), fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: theme.colorScheme.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              scannerState.isFlashOn ? Icons.flash_on : Icons.flash_off,
-            ),
-            onPressed: () {
-              _controller?.toggleTorch();
-              ref.read(qrScannerProvider.notifier).toggleFlash();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed:
-                widget.onHistoryTap ??
-                () => _showHistoryBottomSheet(context, res, theme),
+  // Reutilizar los métodos de TicketScannerScreen
+  Widget _buildScannerArea(Responsive res, ThemeData theme) {
+    return Container(
+      margin: EdgeInsets.all(AppTheme.spacingNormal),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      body: body,
-    );
-  }
-
-  Widget _buildScannerArea(Responsive res, ThemeData theme) {
-    return Container(
-      margin: EdgeInsets.all(res.wp(4)),
-      child: AppCard(
-        padding: EdgeInsets.all(res.wp(2)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
         child: Stack(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(res.wp(3)),
-              child: MobileScanner(
-                controller: _controller,
-                onDetect: (BarcodeCapture capture) {
-                  final List<Barcode> barcodes = capture.barcodes;
-                  for (final barcode in barcodes) {
-                    if (barcode.rawValue != null &&
-                        barcode.rawValue!.isNotEmpty) {
-                      // Vibrate on successful scan
-                      HapticFeedback.mediumImpact();
+            MobileScanner(
+              controller: _controller,
+              onDetect: (capture) {
+                final List<Barcode> barcodes = capture.barcodes;
+                for (final barcode in barcodes) {
+                  if (barcode.rawValue != null &&
+                      barcode.rawValue!.isNotEmpty) {
+                    HapticFeedback.mediumImpact();
 
-                      ref
-                          .read(qrScannerProvider.notifier)
-                          .onQRScanned(barcode.rawValue!);
+                    ref
+                        .read(ticketScannerProvider.notifier)
+                        .onTicketScanned(barcode.rawValue!);
 
-                      AppToast.showSuccess(
-                        context,
-                        title: 'QR Escaneado',
-                        description: 'Código QR detectado exitosamente',
-                      );
-                      break;
-                    }
+                    MotionToast.success(
+                      title: const Text('Ticket Escaneado'),
+                      description: const Text('Ticket detectado exitosamente'),
+                      toastDuration: const Duration(seconds: 3),
+                      width: 300,
+                    ).show(context);
+                    break;
                   }
-                },
-              ),
+                }
+              },
             ),
-
-            // Scanner Overlay
             _buildScannerOverlay(res, theme),
           ],
         ),
@@ -760,259 +1181,143 @@ class _QRScannerContentState extends ConsumerState<QRScannerContent> {
   }
 
   Widget _buildScannerOverlay(Responsive res, ThemeData theme) {
-    return Center(
-          child: Container(
-            width: res.wp(70),
-            height: res.wp(70),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.primaryColor, width: 3),
-              borderRadius: BorderRadius.circular(res.wp(4)),
-            ),
-            child: Stack(
-              children: [
-                // Corner indicators
-                _buildCornerIndicator(
-                  res,
-                  Alignment.topLeft,
-                  BorderRadius.only(topLeft: Radius.circular(res.wp(4))),
-                ),
-                _buildCornerIndicator(
-                  res,
-                  Alignment.topRight,
-                  BorderRadius.only(topRight: Radius.circular(res.wp(4))),
-                ),
-                _buildCornerIndicator(
-                  res,
-                  Alignment.bottomLeft,
-                  BorderRadius.only(bottomLeft: Radius.circular(res.wp(4))),
-                ),
-                _buildCornerIndicator(
-                  res,
-                  Alignment.bottomRight,
-                  BorderRadius.only(bottomRight: Radius.circular(res.wp(4))),
-                ),
-
-                // Center focus indicator
-                Center(
-                  child: Container(
-                    width: res.wp(8),
-                    height: res.wp(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.center_focus_strong,
-                      color: AppTheme.primaryColor,
-                      size: res.dp(3),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )
-        .animate(onPlay: (controller) => controller.repeat())
-        .scaleXY(begin: 0.98, end: 1.02, duration: 2000.ms)
-        .then()
-        .scaleXY(begin: 1.02, end: 0.98, duration: 2000.ms);
-  }
-
-  Widget _buildCornerIndicator(
-    Responsive res,
-    Alignment alignment,
-    BorderRadius borderRadius,
-  ) {
-    return Align(
-      alignment: alignment,
+    return Positioned.fill(
       child: Container(
-        width: res.wp(10),
-        height: res.wp(10),
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor,
-          borderRadius: borderRadius,
+          color: Colors.black.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        ),
+        child: Stack(
+          children: [
+            Center(
+              child: Container(
+                width: res.wp(60),
+                height: res.wp(60),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.primaryColor, width: 2),
+                  borderRadius: BorderRadius.circular(
+                    AppTheme.borderRadiusNormal,
+                  ),
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: res.hp(5),
+              left: 0,
+              right: 0,
+              child: Center(
+                child: AutoSizeText(
+                  'Apunta la cámara al código QR del ticket',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildQRInfo(
+  Widget _buildTicketInfo(
     Responsive res,
     ThemeData theme,
-    QRScannerState scannerState,
+    TicketScannerState state,
   ) {
-    final qrData = scannerState.lastScannedQR!;
-    final scanTime = scannerState.scanTime!;
-    final qrType = ref
-        .read(qrScannerProvider.notifier)
-        ._determineQRType(qrData);
+    if (state.lastScannedTicket == null) return const SizedBox.shrink();
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: res.wp(4), vertical: res.hp(1)),
-      child: AppCard(
-        animationDelay: 200.ms,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  _getQRTypeIcon(qrType),
-                  color: AppTheme.primaryColor,
-                  size: res.dp(2.5),
-                ),
-                SizedBox(width: res.wp(3)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Último QR Escaneado',
-                        style: TextStyle(
-                          fontSize: res.dp(1.6),
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      Text(
-                        '${scanTime.day}/${scanTime.month}/${scanTime.year} ${scanTime.hour}:${scanTime.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          fontSize: res.dp(1.2),
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
+    final ticketData = state.lastScannedTicket!;
+
+    return AppCard(
+      margin: EdgeInsets.all(AppTheme.spacingNormal),
+      padding: EdgeInsets.all(AppTheme.spacingSmall),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.confirmation_number_rounded,
+                color: AppTheme.primaryColor,
+                size: res.dp(2.5),
+              ),
+              SizedBox(width: AppTheme.spacingSmall),
+              Expanded(
+                child: AutoSizeText(
+                  'Ticket escaneado',
+                  style: GoogleFonts.poppins(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.bodyFontColor,
                   ),
+                  maxLines: 1,
                 ),
-              ],
+              ),
+            ],
+          ),
+
+          SizedBox(height: AppTheme.spacingSmall / 2),
+
+          AutoSizeText(
+            ticketData.length > 40
+                ? '${ticketData.substring(0, 40)}...'
+                : ticketData,
+            style: GoogleFonts.sourceCodePro(
+              fontSize: AppTheme.fontSizeBodyNormal,
+              color: AppTheme.grey1,
             ),
+            maxLines: 1,
+          ),
 
-            SizedBox(height: res.hp(1.5)),
+          SizedBox(height: AppTheme.spacingSmall),
 
-            Container(
-              constraints: BoxConstraints(
-                maxHeight: res.hp(8), // Limit height to prevent overflow
-              ),
-              padding: EdgeInsets.all(res.wp(3)),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(res.wp(2)),
-                border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                ),
-              ),
-              child: SingleChildScrollView(
-                child: SelectableText(
-                  qrData,
-                  style: TextStyle(
-                    fontSize: res.dp(1.4),
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(height: res.hp(1.5)),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: qrData));
-                      AppToast.showSuccess(
-                        context,
-                        title: 'Copiado',
-                        description: 'Contenido copiado al portapapeles',
-                      );
-                    },
-                    icon: Icon(Icons.copy, size: res.dp(1.8)),
-                    label: Text(
-                      'Copiar',
-                      style: TextStyle(fontSize: res.dp(1.4)),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: ticketData));
+                    MotionToast.success(
+                      title: const Text('Copiado'),
+                      description: const Text('Ticket copiado'),
+                      toastDuration: const Duration(seconds: 2),
+                      width: 250,
+                    ).show(context);
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: AutoSizeText(
+                    'Copiar',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: AppTheme.fontSizeBodyNormal,
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: res.hp(1)),
+                    maxLines: 1,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingSmall,
+                      vertical: AppTheme.spacingSmall / 2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusSmall,
+                      ),
                     ),
                   ),
                 ),
-                if (qrType == QRType.url) ...[
-                  SizedBox(width: res.wp(3)),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        AppToast.showInfo(
-                          context,
-                          title: 'URL detectada',
-                          description: 'Función de abrir URL próximamente',
-                        );
-                      },
-                      icon: Icon(Icons.open_in_new, size: res.dp(1.8)),
-                      label: Text(
-                        'Abrir',
-                        style: TextStyle(fontSize: res.dp(1.4)),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primaryColor,
-                        padding: EdgeInsets.symmetric(vertical: res.hp(1)),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
-
-  IconData _getQRTypeIcon(QRType type) {
-    switch (type) {
-      case QRType.url:
-        return Icons.link;
-      case QRType.wifi:
-        return Icons.wifi;
-      case QRType.email:
-        return Icons.email;
-      case QRType.phone:
-        return Icons.phone;
-      case QRType.text:
-        return Icons.text_fields;
-      case QRType.other:
-        return Icons.qr_code;
-    }
-  }
-
-  Widget _buildInstructions(Responsive res, ThemeData theme) {
-    return Container(
-      padding: EdgeInsets.all(res.wp(4)),
-      child: AppCard(
-        color: AppTheme.primaryColor.withOpacity(0.05),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline,
-              color: AppTheme.primaryColor,
-              size: res.dp(2.5),
-            ),
-            SizedBox(width: res.wp(3)),
-            Expanded(
-              child: Text(
-                'Apunta la cámara hacia cualquier código QR para escanearlo',
-                style: TextStyle(
-                  fontSize: res.dp(1.5),
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 800.ms, delay: 600.ms);
+    ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.3);
   }
 
   void _showHistoryBottomSheet(
@@ -1020,107 +1325,116 @@ class _QRScannerContentState extends ConsumerState<QRScannerContent> {
     Responsive res,
     ThemeData theme,
   ) {
-    final scannerState = ref.read(qrScannerProvider);
+    final history = ref.read(ticketScannerProvider).history;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: res.hp(70),
+        height: res.hp(60),
         decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(res.wp(6))),
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTheme.borderRadiusLarge),
+          ),
         ),
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.all(res.wp(4)),
+              margin: EdgeInsets.symmetric(vertical: AppTheme.spacingSmall),
+              width: res.wp(12),
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.grey1,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.all(AppTheme.spacingNormal),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Historial de Escaneos',
-                    style: TextStyle(
-                      fontSize: res.dp(2),
+                  AutoSizeText(
+                    'Historial',
+                    style: GoogleFonts.poppins(
+                      fontSize: AppTheme.fontSizeH3,
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
                   ),
-                  IconButton(
-                    onPressed: () {
-                      ref.read(qrScannerProvider.notifier).clearHistory();
-                      Navigator.pop(context);
-                      AppToast.showInfo(
-                        context,
-                        title: 'Historial limpiado',
-                        description: 'Se ha limpiado el historial de escaneos',
-                      );
-                    },
-                    icon: const Icon(Icons.clear_all),
-                  ),
+                  if (history.isNotEmpty)
+                    TextButton(
+                      onPressed: () {
+                        ref.read(ticketScannerProvider.notifier).clearHistory();
+                        Navigator.pop(context);
+                      },
+                      child: AutoSizeText(
+                        'Limpiar',
+                        style: GoogleFonts.inter(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
                 ],
               ),
             ),
+
             Expanded(
-              child: scannerState.history.isEmpty
+              child: history.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.history,
-                            size: res.dp(8),
-                            color: AppTheme.primaryColor.withOpacity(0.3),
-                          ),
-                          SizedBox(height: res.hp(2)),
-                          Text(
-                            'No hay escaneos en el historial',
-                            style: TextStyle(
-                              fontSize: res.dp(1.8),
-                              color: theme.colorScheme.onSurface.withOpacity(
-                                0.6,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: AutoSizeText(
+                        'No hay tickets escaneados',
+                        style: GoogleFonts.inter(
+                          fontSize: AppTheme.fontSizeBodyLarge,
+                          color: AppTheme.grey1,
+                        ),
+                        maxLines: 1,
                       ),
                     )
                   : ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: res.wp(4)),
-                      itemCount: scannerState.history.length,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingNormal,
+                      ),
+                      itemCount: history.length,
                       itemBuilder: (context, index) {
-                        final item = scannerState.history[index];
+                        final item = history[index];
                         return Card(
-                          margin: EdgeInsets.only(bottom: res.hp(1)),
+                          margin: EdgeInsets.symmetric(
+                            vertical: AppTheme.spacingSmall / 2,
+                          ),
                           child: ListTile(
                             leading: Icon(
-                              _getQRTypeIcon(item.type),
+                              Icons.confirmation_number_rounded,
                               color: AppTheme.primaryColor,
                             ),
-                            title: Text(
-                              item.qrData.length > 50
-                                  ? '${item.qrData.substring(0, 50)}...'
-                                  : item.qrData,
-                              style: TextStyle(fontSize: res.dp(1.6)),
+                            title: AutoSizeText(
+                              item.ticketData.length > 25
+                                  ? '${item.ticketData.substring(0, 25)}...'
+                                  : item.ticketData,
+                              style: GoogleFonts.inter(
+                                fontSize: AppTheme.fontSizeBodyNormal,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
                             ),
-                            subtitle: Text(
-                              '${item.scanTime.day}/${item.scanTime.month}/${item.scanTime.year} ${item.scanTime.hour}:${item.scanTime.minute.toString().padLeft(2, '0')}',
-                              style: TextStyle(fontSize: res.dp(1.3)),
+                            subtitle: AutoSizeText(
+                              '${item.scanTime.day}/${item.scanTime.month} - ${item.scanTime.hour.toString().padLeft(2, '0')}:${item.scanTime.minute.toString().padLeft(2, '0')}',
+                              style: GoogleFonts.inter(
+                                fontSize: AppTheme.fontSizeBodyNormal,
+                                color: AppTheme.grey1,
+                              ),
+                              maxLines: 1,
                             ),
-                            trailing: IconButton(
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: item.qrData),
-                                );
-                                AppToast.showSuccess(
-                                  context,
-                                  title: 'Copiado',
-                                  description:
-                                      'Contenido copiado al portapapeles',
-                                );
-                              },
-                              icon: const Icon(Icons.copy),
-                            ),
+                            onTap: () {
+                              ref
+                                  .read(ticketScannerProvider.notifier)
+                                  .onTicketScanned(item.ticketData);
+                              Navigator.pop(context);
+                            },
                           ),
                         );
                       },
@@ -1130,5 +1444,586 @@ class _QRScannerContentState extends ConsumerState<QRScannerContent> {
         ),
       ),
     );
+  }
+
+  // Métodos modernos para el escáner
+  Widget _buildModernScannerArea(Responsive res, ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.1),
+            Colors.white.withOpacity(0.05),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        child: Stack(
+          children: [
+            // Scanner
+            MobileScanner(
+              controller: _controller,
+              onDetect: (capture) {
+                final List<Barcode> barcodes = capture.barcodes;
+                for (final barcode in barcodes) {
+                  if (barcode.rawValue != null &&
+                      barcode.rawValue!.isNotEmpty) {
+                    HapticFeedback.mediumImpact();
+
+                    ref
+                        .read(ticketScannerProvider.notifier)
+                        .onTicketScanned(barcode.rawValue!);
+
+                    MotionToast.success(
+                      title: const Text('¡Ticket Escaneado!'),
+                      description: const Text('Ticket detectado exitosamente'),
+                      toastDuration: const Duration(seconds: 3),
+                      width: 300,
+                    ).show(context);
+                    break;
+                  }
+                }
+              },
+            ),
+
+            // Modern overlay con animaciones
+            _buildModernScannerOverlay(res, theme),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernScannerOverlay(Responsive res, ThemeData theme) {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        ),
+        child: Stack(
+          children: [
+            // Overlay oscuro con recorte
+            ClipPath(
+              clipper: ScannerOverlayClipper(
+                scanAreaSize: res.wp(65),
+                borderRadius: AppTheme.borderRadiusNormal,
+              ),
+              child: Container(color: Colors.black.withOpacity(0.7)),
+            ),
+
+            // Área de escaneo con efectos modernos
+            Center(
+              child: Container(
+                width: res.wp(65),
+                height: res.wp(65),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white, width: 3),
+                  borderRadius: BorderRadius.circular(
+                    AppTheme.borderRadiusNormal,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.3),
+                      blurRadius: 15,
+                      spreadRadius: 3,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // Esquinas con animación pulso
+                    _buildModernCorner(res, isTopLeft: true),
+                    _buildModernCorner(res, isTopRight: true),
+                    _buildModernCorner(res, isBottomLeft: true),
+                    _buildModernCorner(res, isBottomRight: true),
+
+                    // Líneas de escaneo múltiples
+                    _buildMultipleScanLines(res),
+                  ],
+                ),
+              ),
+            ),
+
+            // Texto de instrucciones mejorado
+            Positioned(
+              bottom: res.hp(8),
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingLarge,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(AppTheme.spacingNormal),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusLarge,
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          AutoSizeText(
+                            '📱 Mantén el QR en el área marcada',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: AppTheme.fontSizeBodyLarge,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                          ),
+                          SizedBox(height: AppTheme.spacingSmall / 2),
+                          AutoSizeText(
+                            'El escaneo se realizará automáticamente',
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: AppTheme.fontSizeBodyNormal,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernCorner(
+    Responsive res, {
+    bool isTopLeft = false,
+    bool isTopRight = false,
+    bool isBottomLeft = false,
+    bool isBottomRight = false,
+  }) {
+    return Positioned(
+          top: isTopLeft || isTopRight ? -2 : null,
+          bottom: isBottomLeft || isBottomRight ? -2 : null,
+          left: isTopLeft || isBottomLeft ? -2 : null,
+          right: isTopRight || isBottomRight ? -2 : null,
+          child: Container(
+            width: res.wp(10),
+            height: res.wp(10),
+            decoration: BoxDecoration(
+              border: Border(
+                top: (isTopLeft || isTopRight)
+                    ? BorderSide(color: AppTheme.primaryColor, width: 5)
+                    : BorderSide.none,
+                bottom: (isBottomLeft || isBottomRight)
+                    ? BorderSide(color: AppTheme.primaryColor, width: 5)
+                    : BorderSide.none,
+                left: (isTopLeft || isBottomLeft)
+                    ? BorderSide(color: AppTheme.primaryColor, width: 5)
+                    : BorderSide.none,
+                right: (isTopRight || isBottomRight)
+                    ? BorderSide(color: AppTheme.primaryColor, width: 5)
+                    : BorderSide.none,
+              ),
+            ),
+          ),
+        )
+        .animate(onPlay: (controller) => controller.repeat())
+        .scale(
+          begin: const Offset(0.8, 0.8),
+          end: const Offset(1.2, 1.2),
+          duration: 1500.ms,
+          curve: Curves.easeInOut,
+        )
+        .then()
+        .scale(
+          begin: const Offset(1.2, 1.2),
+          end: const Offset(0.8, 0.8),
+          duration: 1500.ms,
+          curve: Curves.easeInOut,
+        );
+  }
+
+  Widget _buildMultipleScanLines(Responsive res) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+      child: Stack(
+        children: [
+          // Línea principal
+          Container(
+                width: double.infinity,
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      AppTheme.primaryColor.withOpacity(0.3),
+                      AppTheme.primaryColor,
+                      AppTheme.primaryColor.withOpacity(0.3),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              )
+              .animate(onPlay: (controller) => controller.repeat())
+              .moveY(
+                begin: -res.wp(30),
+                end: res.wp(30),
+                duration: 2500.ms,
+                curve: Curves.easeInOut,
+              ),
+
+          // Línea secundaria
+          Container(
+                width: double.infinity,
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      Colors.white.withOpacity(0.5),
+                      Colors.white,
+                      Colors.white.withOpacity(0.5),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              )
+              .animate(onPlay: (controller) => controller.repeat())
+              .moveY(
+                begin: res.wp(30),
+                end: -res.wp(30),
+                duration: 3000.ms,
+                curve: Curves.easeInOut,
+              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStats(
+    Responsive res,
+    ThemeData theme,
+    TicketScannerState state,
+  ) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: AppTheme.spacingNormal),
+      padding: EdgeInsets.all(AppTheme.spacingNormal),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              'Escaneados Hoy',
+              '${state.history.length}',
+              Icons.qr_code_scanner_rounded,
+              res,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: res.hp(5),
+            color: Colors.white.withOpacity(0.3),
+          ),
+          Expanded(
+            child: _buildStatItem(
+              'Último Escaneo',
+              state.scanTime != null
+                  ? '${state.scanTime!.hour.toString().padLeft(2, '0')}:${state.scanTime!.minute.toString().padLeft(2, '0')}'
+                  : '--:--',
+              Icons.access_time_rounded,
+              res,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Responsive res,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white.withOpacity(0.7), size: res.dp(2.5)),
+        SizedBox(height: AppTheme.spacingSmall / 2),
+        AutoSizeText(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: AppTheme.fontSizeH3,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          maxLines: 1,
+        ),
+        AutoSizeText(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: AppTheme.fontSizeBodyNormal,
+            color: Colors.white.withOpacity(0.7),
+          ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernTicketInfo(
+    Responsive res,
+    ThemeData theme,
+    TicketScannerState state,
+  ) {
+    if (state.lastScannedTicket == null) return const SizedBox.shrink();
+
+    final ticketData = state.lastScannedTicket!;
+    final scanTime = state.scanTime!;
+
+    return Container(
+          margin: EdgeInsets.all(AppTheme.spacingNormal),
+          padding: EdgeInsets.all(AppTheme.spacingNormal),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(AppTheme.spacingSmall),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusNormal,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.confirmation_number_rounded,
+                      color: Colors.white,
+                      size: res.dp(2.5),
+                    ),
+                  ),
+                  SizedBox(width: AppTheme.spacingSmall),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AutoSizeText(
+                          'Ticket Escaneado',
+                          style: GoogleFonts.poppins(
+                            fontSize: AppTheme.fontSizeBodyLarge,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                        ),
+                        AutoSizeText(
+                          '${scanTime.day}/${scanTime.month}/${scanTime.year} - ${scanTime.hour.toString().padLeft(2, '0')}:${scanTime.minute.toString().padLeft(2, '0')}',
+                          style: GoogleFonts.inter(
+                            fontSize: AppTheme.fontSizeBodyNormal,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: AppTheme.spacingNormal),
+
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(AppTheme.spacingNormal),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(
+                    AppTheme.borderRadiusSmall,
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: SelectableText(
+                  ticketData,
+                  style: GoogleFonts.sourceCodePro(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              SizedBox(height: AppTheme.spacingNormal),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.2),
+                            Colors.white.withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusNormal,
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: ticketData));
+                            MotionToast.success(
+                              title: const Text('Copiado'),
+                              description: const Text(
+                                'Ticket copiado al portapapeles',
+                              ),
+                              toastDuration: const Duration(seconds: 2),
+                              width: 300,
+                            ).show(context);
+                          },
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.borderRadiusNormal,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(AppTheme.spacingNormal),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.copy_rounded,
+                                  color: Colors.white,
+                                  size: res.dp(2),
+                                ),
+                                SizedBox(width: AppTheme.spacingSmall),
+                                AutoSizeText(
+                                  'Copiar',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(width: AppTheme.spacingSmall),
+
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor.withOpacity(0.8),
+                            AppTheme.primaryColor.withOpacity(0.6),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusNormal,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _validateTicket(ticketData),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.borderRadiusNormal,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(AppTheme.spacingNormal),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.verified_rounded,
+                                  color: Colors.white,
+                                  size: res.dp(2),
+                                ),
+                                SizedBox(width: AppTheme.spacingSmall),
+                                AutoSizeText(
+                                  'Validar',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        )
+        .animate()
+        .fadeIn(duration: 600.ms)
+        .slideY(begin: 0.3)
+        .shimmer(duration: 1000.ms, color: Colors.white.withOpacity(0.1));
+  }
+
+  void _validateTicket(String ticketData) {
+    // TODO: Implementar validación real con backend
+    MotionToast.success(
+      title: const Text('Ticket Válido ✅'),
+      description: const Text('El ticket ha sido validado correctamente'),
+      toastDuration: const Duration(seconds: 3),
+      width: 300,
+    ).show(context);
   }
 }

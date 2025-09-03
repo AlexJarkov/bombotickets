@@ -3,24 +3,70 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Colors principales (mantenemos la identidad de Bombotickets)
-  static const Color primaryColor = Color(0xFF0C71C3);
-  static const Color secondaryColor = Color(0xFF2176FF);
+  // Paleta principal - púrpura como base
+  static const Color primaryColor = Color(
+    0xFFA855F7,
+  ); // Purple 500 - color principal
+  static const Color secondaryColor = Color(
+    0xFF6366F1,
+  ); // Indigo 500 - complementario
+  static const Color errorColor = Color(0xFFEF4444); // Red 500
+
+  // Estados semáforo - necesarios para home_screen.dart
+  static const Color successColor = Color(0xFF22C55E); // Green 500
+  static const Color warningColor = Color(0xFFF59E0B); // Amber 500
+
+  // Estados para toast y notificaciones
+  static const Color successColorLight = Color(0xFF4ADE80); // Green 400
+  static const Color warningColorLight = Color(0xFFFBBF24); // Amber 400
+  static const Color infoColorLight = Color(0xFF60A5FA); // Blue 400
+  static const Color errorColorLight = Color(0xFFF87171); // Red 400
+
+  // Colores de texto para los toast
+  static const Color onSuccessLight = Color(0xFF064E3B);
+  static const Color onWarningLight = Color(0xFF92400E);
+  static const Color onInfoLight = Color(0xFF1E3A8A);
+  static const Color onErrorLight = Color(0xFFFFFFFF);
+
+  // Superficies
+  static const Color surfaceDark = Color(0xFF0B1020);
+  static const Color surfaceCardDark = Color(0xFF0F172A);
+  static const Color surfaceLight = Color(0xFFF8FAFC);
+  static const Color surfaceCardLight = Color(0xFFFFFFFF);
+
+  // Gradientes necesarios
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryColor, secondaryColor],
+  );
 
   // Método para tema claro
   static ThemeData lightTheme() {
     return FlexThemeData.light(
-      scheme: FlexScheme.blue,
-      primary: primaryColor,
-      secondary: secondaryColor,
-      surface: const Color(0xFFF8F9FA),
-      background: const Color(0xFFFFFFFF),
-      scaffoldBackground: const Color(0xFFF6F6EF),
+      colors: const FlexSchemeColor(
+        primary: primaryColor,
+        primaryContainer: Color(
+          0xFFF3E8FF,
+        ), // Purple 50 - container para púrpura
+        secondary: secondaryColor,
+        secondaryContainer: Color(
+          0xFFEEF2FF,
+        ), // Indigo 50 - container para indigo
+        tertiary: primaryColor, // Usar primaryColor como tertiary
+        tertiaryContainer: Color(0xFFF3E8FF),
+        error: errorColor,
+      ),
+      useMaterial3: true,
+      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+      blendLevel: 8,
+      visualDensity: VisualDensity.standard,
+      scaffoldBackground: surfaceLight,
+      surface: surfaceCardLight,
       appBarStyle: FlexAppBarStyle.background,
       subThemesData: const FlexSubThemesData(
         blendOnLevel: 10,
         blendOnColors: false,
-        useTextTheme: true,
         useM2StyleDividerInM3: true,
         alignedDropdown: true,
         useInputDecoratorThemeInDialogs: true,
@@ -56,8 +102,6 @@ class AppTheme {
         useTertiary: true,
         keepPrimary: true,
       ),
-      visualDensity: FlexColorScheme.comfortablePlatformDensity,
-      useMaterial3: true,
       textTheme: GoogleFonts.interTextTheme(),
       primaryTextTheme: GoogleFonts.interTextTheme(),
     );
@@ -66,17 +110,25 @@ class AppTheme {
   // Método para tema oscuro
   static ThemeData darkTheme() {
     return FlexThemeData.dark(
-      scheme: FlexScheme.blue,
-      primary: primaryColor,
-      secondary: secondaryColor,
-      surface: const Color(0xFF121212),
-      background: const Color(0xFF0A0A0A),
-      scaffoldBackground: const Color(0xFF0B1E3B),
+      colors: const FlexSchemeColor(
+        primary: primaryColor,
+        primaryContainer: Color(0xFF581C87), // Purple 900 - container oscuro
+        secondary: secondaryColor,
+        secondaryContainer: Color(0xFF312E81), // Indigo 800 - container oscuro
+        tertiary: primaryColor, // Usar primaryColor como tertiary
+        tertiaryContainer: Color(0xFF581C87),
+        error: errorColor,
+      ),
+      useMaterial3: true,
+      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+      blendLevel: 15,
+      visualDensity: VisualDensity.standard,
+      scaffoldBackground: surfaceDark,
+      surface: surfaceCardDark,
       appBarStyle: FlexAppBarStyle.background,
       subThemesData: const FlexSubThemesData(
         blendOnLevel: 20,
         blendOnColors: false,
-        useTextTheme: true,
         useM2StyleDividerInM3: true,
         alignedDropdown: true,
         useInputDecoratorThemeInDialogs: true,
@@ -112,8 +164,6 @@ class AppTheme {
         useTertiary: true,
         keepPrimary: true,
       ),
-      visualDensity: FlexColorScheme.comfortablePlatformDensity,
-      useMaterial3: true,
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       primaryTextTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
     );
@@ -129,7 +179,6 @@ class AppTheme {
       subThemesData: const FlexSubThemesData(
         blendOnLevel: 10,
         blendOnColors: false,
-        useTextTheme: true,
         // Bottom Navigation Bar
         bottomNavigationBarType: BottomNavigationBarType.fixed,
         bottomNavigationBarBackgroundSchemeColor: SchemeColor.surface,
@@ -154,7 +203,6 @@ class AppTheme {
       subThemesData: const FlexSubThemesData(
         blendOnLevel: 20,
         blendOnColors: false,
-        useTextTheme: true,
         // Bottom Navigation Bar
         bottomNavigationBarType: BottomNavigationBarType.fixed,
         bottomNavigationBarBackgroundSchemeColor: SchemeColor.surface,
@@ -198,8 +246,35 @@ class AppTheme {
   static const double spacingMedium = 24.0;
   static const double spacingLarge = 32.0;
 
-  // Border radius
+  // Border radius - Patrón profesional
   static const double borderRadiusSmall = 8.0;
-  static const double borderRadiusNormal = 12.0;
-  static const double borderRadiusLarge = 24.0;
+  static const double borderRadiusNormal = 16.0; // Cards modernas
+  static const double borderRadiusLarge = 20.0; // Cards grandes
+  static const double borderRadiusPremium = 24.0; // Modales/sheets
+  static const double borderRadiusMaxPremium =
+      28.0; // QR viewer/sheets especiales
+
+  // Toast color helpers
+  static Map<String, Color> get toastColors => {
+    'success': successColorLight,
+    'warning': warningColorLight,
+    'info': infoColorLight,
+    'error': errorColorLight,
+  };
+
+  static Map<String, Color> get toastTextColors => {
+    'success': onSuccessLight,
+    'warning': onWarningLight,
+    'info': onInfoLight,
+    'error': onErrorLight,
+  };
+
+  // Método helper para obtener colores de toast
+  static Color getToastColor(String type) {
+    return toastColors[type] ?? successColorLight;
+  }
+
+  static Color getToastTextColor(String type) {
+    return toastTextColors[type] ?? onSuccessLight;
+  }
 }

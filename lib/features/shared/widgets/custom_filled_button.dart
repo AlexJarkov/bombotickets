@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CustomFilledButton extends StatelessWidget {
   final String text;
@@ -22,8 +24,7 @@ class CustomFilledButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final responsive = Responsive.of(context);
-    final colors = Theme.of(context).colorScheme;
-    final backgroundColor = buttonColor ?? colors.primary;
+    final backgroundColor = buttonColor ?? AppTheme.primaryColor;
 
     return SizedBox(
       width: double.infinity,
@@ -33,7 +34,7 @@ class CustomFilledButton extends StatelessWidget {
           backgroundColor: backgroundColor,
           disabledBackgroundColor: backgroundColor.withOpacity(0.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(responsive.wp(2.5)),
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
           ),
           elevation: 0,
         ),
@@ -49,10 +50,10 @@ class CustomFilledButton extends StatelessWidget {
               )
             : Text(
                 text,
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: Colors.white,
-                  fontSize: responsive.dp(2.2),
-                  fontWeight: FontWeight.bold,
+                  fontSize: AppTheme.fontSizeBodyMedium,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
       ),

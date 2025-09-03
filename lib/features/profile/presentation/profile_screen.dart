@@ -3,42 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/auth/providers/auth_provider.dart';
-import 'package:bombotickets/features/shared/widgets/gradient_background.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:go_router/go_router.dart';
 
-class ProfileContent extends ConsumerWidget {
-  final bool showInPageView;
+class ProfileScreen extends ConsumerWidget {
+  static String name = 'profile';
 
-  const ProfileContent({super.key, this.showInPageView = false});
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final res = Responsive.of(context);
     final authState = ref.watch(authProvider);
 
-    final content = Scaffold(
-      backgroundColor: showInPageView ? Colors.transparent : Colors.transparent,
-      appBar: showInPageView
-          ? null
-          : AppBar(
-              title: AutoSizeText(
-                'Perfil',
-                style: GoogleFonts.poppins(
-                  fontSize: AppTheme.fontSizeH2,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                maxLines: 1,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                onPressed: () => context.pop(),
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              ),
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: AutoSizeText(
+          'Perfil',
+          style: GoogleFonts.poppins(
+            fontSize: AppTheme.fontSizeH2,
+            fontWeight: FontWeight.bold,
+          ),
+          maxLines: 1,
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -46,40 +36,30 @@ class ProfileContent extends ConsumerWidget {
             padding: EdgeInsets.all(AppTheme.spacingMedium),
             child: Column(
               children: [
-                SizedBox(height: showInPageView ? AppTheme.spacingLarge : 0),
-
                 // Profile Info Simple
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(AppTheme.spacingMedium),
                   decoration: BoxDecoration(
-                    color: showInPageView
-                        ? Theme.of(context).colorScheme.surface
-                        : Colors.white.withOpacity(0.15),
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(
                       AppTheme.borderRadiusLarge,
                     ),
                     border: Border.all(
-                      color: showInPageView
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.outline.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withOpacity(0.2),
                     ),
                   ),
                   child: Column(
                     children: [
                       CircleAvatar(
                         radius: res.wp(10),
-                        backgroundColor: showInPageView
-                            ? AppTheme.primaryColor.withOpacity(0.2)
-                            : Colors.white.withOpacity(0.2),
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
                         child: Icon(
                           Icons.person_rounded,
                           size: res.dp(5),
-                          color: showInPageView
-                              ? AppTheme.primaryColor
-                              : Colors.white,
+                          color: AppTheme.primaryColor,
                         ),
                       ),
                       SizedBox(height: AppTheme.spacingMedium),
@@ -88,9 +68,7 @@ class ProfileContent extends ConsumerWidget {
                         style: GoogleFonts.poppins(
                           fontSize: AppTheme.fontSizeH3,
                           fontWeight: FontWeight.bold,
-                          color: showInPageView
-                              ? AppTheme.bodyFontColor
-                              : Colors.white,
+                          color: AppTheme.bodyFontColor,
                         ),
                         maxLines: 1,
                       ),
@@ -156,12 +134,6 @@ class ProfileContent extends ConsumerWidget {
         ),
       ),
     );
-
-    if (showInPageView) {
-      return GradientBackground(child: content);
-    } else {
-      return content;
-    }
   }
 
   Widget _buildMenuItem(
@@ -175,16 +147,12 @@ class ProfileContent extends ConsumerWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: showInPageView
-            ? Theme.of(context).colorScheme.surface
-            : Colors.white.withOpacity(0.1),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
         border: Border.all(
           color: isLogout
               ? Colors.red.withOpacity(0.3)
-              : showInPageView
-              ? Theme.of(context).colorScheme.outline.withOpacity(0.2)
-              : Colors.white.withOpacity(0.2),
+              : Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
       ),
       child: Material(
@@ -198,11 +166,7 @@ class ProfileContent extends ConsumerWidget {
               children: [
                 Icon(
                   icon,
-                  color: isLogout
-                      ? Colors.red
-                      : showInPageView
-                      ? AppTheme.primaryColor
-                      : Colors.white,
+                  color: isLogout ? Colors.red : AppTheme.primaryColor,
                   size: res.dp(2.5),
                 ),
                 SizedBox(width: AppTheme.spacingMedium),
@@ -212,11 +176,7 @@ class ProfileContent extends ConsumerWidget {
                     style: GoogleFonts.poppins(
                       fontSize: AppTheme.fontSizeBodyLarge,
                       fontWeight: FontWeight.w600,
-                      color: isLogout
-                          ? Colors.red
-                          : showInPageView
-                          ? AppTheme.bodyFontColor
-                          : Colors.white,
+                      color: isLogout ? Colors.red : AppTheme.bodyFontColor,
                     ),
                     maxLines: 1,
                   ),
@@ -225,9 +185,7 @@ class ProfileContent extends ConsumerWidget {
                   Icons.chevron_right_rounded,
                   color: isLogout
                       ? Colors.red.withOpacity(0.6)
-                      : showInPageView
-                      ? AppTheme.grey1
-                      : Colors.white.withOpacity(0.6),
+                      : AppTheme.grey1,
                   size: res.dp(2),
                 ),
               ],

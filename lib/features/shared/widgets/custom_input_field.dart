@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CustomInputField extends StatelessWidget {
   final String label;
@@ -31,7 +33,7 @@ class CustomInputField extends StatelessWidget {
   Widget build(BuildContext context) {
     final responsive = Responsive.of(context);
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(responsive.wp(2.5)),
+      borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
       borderSide: const BorderSide(color: Colors.transparent),
     );
 
@@ -43,31 +45,38 @@ class CustomInputField extends StatelessWidget {
           keyboardType: keyboardType,
           onChanged: onChanged,
           controller: controller,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontSize: responsive.dp(2)),
+          style: GoogleFonts.inter(
+            fontSize: AppTheme.fontSizeBodyNormal,
+            color: AppTheme.bodyFontColor,
+          ),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontSize: responsive.dp(1.8)),
+            labelStyle: GoogleFonts.inter(
+              fontSize: AppTheme.fontSizeBodyNormal,
+              color: AppTheme.grey1,
+            ),
             filled: true,
+            fillColor: AppTheme.greyInputBg,
             border: border,
             enabledBorder: border,
             focusedBorder: focusedBorder
                 ? border.copyWith(
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
+                    borderSide: const BorderSide(
+                      color: AppTheme.primaryColor,
                       width: 2,
                     ),
                   )
                 : border,
             contentPadding: EdgeInsets.symmetric(
-              vertical: responsive.hp(1.5),
-              horizontal: responsive.wp(4),
+              vertical: AppTheme.spacingNormal,
+              horizontal: AppTheme.spacingNormal,
             ),
             prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, color: Colors.grey, size: responsive.dp(3))
+                ? Icon(
+                    prefixIcon,
+                    color: AppTheme.grey1,
+                    size: responsive.dp(3),
+                  )
                 : null,
             suffixIcon: suffixIcon,
           ),
@@ -75,14 +84,15 @@ class CustomInputField extends StatelessWidget {
         if (errorMessage != null && isFormPosted)
           Padding(
             padding: EdgeInsets.only(
-              top: responsive.hp(0.5),
-              left: responsive.wp(3),
+              top: AppTheme.spacingSmall / 2,
+              left: AppTheme.spacingSmall,
             ),
             child: Text(
               errorMessage!,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: Colors.red[700],
-                fontSize: responsive.dp(1.5),
+                fontSize: AppTheme.fontSizeBodyNormal,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

@@ -1,14 +1,11 @@
-import 'dart:developer';
-import 'dart:io';
 import 'package:bombotickets/config/router/router.dart';
-import 'package:bombotickets/config/theme/theme.dart';
+import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/settings/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/config/environment.dart';
 
 void main() async {
-  log('Current directory: \\${Directory.current.path}');
   WidgetsFlutterBinding.ensureInitialized();
   await Environment.initEnvironment();
   runApp(const ProviderScope(child: MainApp()));
@@ -24,8 +21,8 @@ class MainApp extends ConsumerWidget {
 
     return MaterialApp.router(
       routerConfig: appRouter,
-      theme: AppTheme(isDarkMode: false).getTheme(reduceMotion: reduceMotion),
-      darkTheme: AppTheme(isDarkMode: true).getTheme(reduceMotion: reduceMotion),
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
       themeMode: settings.themeMode,
       builder: (context, child) {
         final data = MediaQuery.of(context);
