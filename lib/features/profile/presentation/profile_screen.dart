@@ -87,7 +87,7 @@ class ProfileScreen extends ConsumerWidget {
                           style: GoogleFonts.poppins(
                             fontSize: AppTheme.fontSizeH3 - 2,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.bodyFontColor,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -270,24 +270,85 @@ class ProfileScreen extends ConsumerWidget {
 
                   SizedBox(height: AppTheme.spacingLarge),
 
-                  // Logout Button Simple
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.logout_rounded,
-                    title: 'Cerrar Sesión',
-                    onTap: () async {
-                      final shouldLogout = await _showLogoutDialog(context);
-                      if (shouldLogout == true) {
-                        await ref.read(authProvider.notifier).logout();
-                        if (context.mounted) {
-                          context.go('/splash');
-                        }
-                      }
-                    },
-                    res: res,
-                    isLogout: true,
-                  ),
+                  // Logout
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.borderRadiusLarge),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          final shouldLogout = await _showLogoutDialog(context);
+                          if (shouldLogout == true) {
+                            ref.read(authProvider.notifier).logout();
+                            if (context.mounted) context.go('/');
+                          }
+                        },
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.borderRadiusLarge),
+                        child: Padding(
+                          padding: EdgeInsets.all(AppTheme.spacingNormal),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.logout_rounded,
+                                color: Colors.red,
+                                size: res.dp(2.5),
+                              ),
+                              SizedBox(width: AppTheme.spacingMedium),
+                              Expanded(
+                                child: AutoSizeText(
+                                  'Cerrar Sesión',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: AppTheme.fontSizeBodyLarge,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.red.withOpacity(0.6),
+                                size: res.dp(2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1),
 
+<<<<<<<<< Temporary merge branch 1
+                SizedBox(height: AppTheme.spacingLarge),
+
+                // Logout Button Simple
+                _buildMenuItem(
+                  context,
+                  icon: Icons.logout_rounded,
+                  title: 'Cerrar Sesión',
+                  onTap: () async {
+                    final shouldLogout = await _showLogoutDialog(context);
+                    if (shouldLogout == true) {
+                      await ref.read(authProvider.notifier).logout();
+                      if (context.mounted) {
+                        context.go('/splash');
+                      }
+                    }
+                  },
+                  res: res,
+                  isLogout: true,
+                ),
+
+                SizedBox(height: AppTheme.spacingLarge),
+              ],
+=========
                   SizedBox(height: AppTheme.spacingLarge),
                 ],
               ),

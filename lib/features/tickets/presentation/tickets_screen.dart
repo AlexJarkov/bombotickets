@@ -213,6 +213,9 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   // Tab de compra de tickets
   Widget _buildBuyTab(Responsive res, ThemeData theme) {
     final availableEvents = ref.watch(availableEventsProvider);
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 1000;
+    final crossAxisCount = isWide ? 2 : 1;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(res.wp(4)),
@@ -271,8 +274,20 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
 
           SizedBox(height: res.hp(1.5)),
 
-          // Lista de eventos
-          ...availableEvents.map((event) => _buildEventCard(event, res, theme)),
+          // Lista de eventos (grid responsiva)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: AppTheme.spacingNormal,
+              mainAxisSpacing: AppTheme.spacingNormal,
+              childAspectRatio: isWide ? 1.8 : 1.0,
+            ),
+            itemCount: availableEvents.length,
+            itemBuilder: (context, index) =>
+                _buildEventCard(availableEvents[index], res, theme),
+          ),
         ],
       ),
     );
