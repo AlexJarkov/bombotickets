@@ -107,13 +107,22 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final currentGradient = _getGradient(isDark);
+    final bool reduce = MediaQuery.of(context).disableAnimations;
+    final bool shouldAnimate = widget.animated && !reduce;
+
+    // Ensure controller reflects the desired state
+    if (shouldAnimate && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!shouldAnimate && _controller.isAnimating) {
+      _controller.stop();
+    }
 
     return Container(
       decoration: BoxDecoration(gradient: currentGradient),
       child: Stack(
         children: [
           // Capa de animación de gradiente
-          if (widget.animated)
+          if (shouldAnimate)
             AnimatedBuilder(
               animation: _rotationAnimation,
               builder: (context, child) {
