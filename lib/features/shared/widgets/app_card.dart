@@ -26,6 +26,7 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final theme = Theme.of(context);
+    final bool disableAnimations = MediaQuery.of(context).disableAnimations;
 
     Widget cardContent = Container(
       padding: padding ?? EdgeInsets.all(res.wp(6)),
@@ -60,16 +61,18 @@ class AppCard extends StatelessWidget {
       );
     }
 
+    if (disableAnimations) return cardContent;
+
     return cardContent
-        .animate(delay: animationDelay ?? 0.ms)
-        .fadeIn(duration: 600.ms, curve: Curves.easeOutCubic)
-        .slideY(begin: 0.1, duration: 600.ms, curve: Curves.easeOutCubic)
+        .animate(delay: animationDelay ?? 0.ms, target: disableAnimations ? 0 : 1)
+        .fadeIn(duration: 360.ms, curve: Curves.easeOutCubic)
+        .slideY(begin: 0.06, duration: 360.ms, curve: Curves.easeOutCubic)
         .shimmer(
           delay: Duration(
-            milliseconds: (animationDelay?.inMilliseconds ?? 0) + 800,
+            milliseconds: (animationDelay?.inMilliseconds ?? 0) + 600,
           ),
-          duration: 1200.ms,
-          color: theme.colorScheme.primary.withOpacity(0.1),
+          duration: 900.ms,
+          color: theme.colorScheme.primary.withOpacity(0.08),
         );
   }
 }

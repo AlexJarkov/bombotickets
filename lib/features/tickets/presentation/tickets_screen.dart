@@ -99,6 +99,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final theme = Theme.of(context);
+    final reduce = MediaQuery.of(context).disableAnimations;
 
     return GestureDetector(
       onTap: () {
@@ -107,7 +108,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
       },
       child: AnimatedBackground(
         style: BackgroundStyle.surface,
-        animated: true,
+        animated: !reduce,
         intensity: 0.6,
         child: Scaffold(
           backgroundColor: Colors.transparent,
@@ -129,8 +130,8 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                 margin: EdgeInsets.symmetric(
                   horizontal: AppTheme.spacingMedium,
                 ),
-                child:
-                    TabBar(
+                child: (() {
+                      final w = TabBar(
                           controller: _tabController,
                           dividerColor: Colors.transparent,
                           isScrollable: false,
@@ -183,10 +184,13 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                               ),
                             ),
                           ],
-                        )
-                        .animate()
-                        .slideY(duration: 400.ms, begin: 0.3, end: 0)
-                        .fadeIn(duration: 400.ms),
+                        );
+                      if (reduce) return w;
+                      return w
+                          .animate()
+                          .slideY(duration: 260.ms, begin: 0.16, end: 0)
+                          .fadeIn(duration: 260.ms);
+                    })(),
               ),
 
               // Contenido de tabs
@@ -219,18 +223,21 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
           Row(
             children: [
               Expanded(
-                child:
-                    GlassSearchBar(
+                child: (() {
+                      final w = GlassSearchBar(
                           controller: _searchController,
                           hintText: 'Buscar eventos, artistas...',
                           iconSize: res.dp(2.2),
                           onChanged: (value) {
                             // TODO: Implementar búsqueda
                           },
-                        )
-                        .animate()
-                        .slideX(duration: 500.ms, begin: 0.3, end: 0)
-                        .fadeIn(),
+                        );
+                      if (MediaQuery.of(context).disableAnimations) return w;
+                      return w
+                          .animate()
+                          .slideX(duration: 280.ms, begin: 0.14, end: 0)
+                          .fadeIn(duration: 280.ms);
+                    })(),
               ),
 
               SizedBox(width: AppTheme.spacingSmall),
@@ -249,9 +256,9 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                     size: res.dp(2.4),
                   ),
                 ),
-              ).animate().scale(duration: 400.ms, delay: 200.ms),
-            ],
-          ),
+              ).animate(target: MediaQuery.of(context).disableAnimations ? 1 : 1).scale(duration: MediaQuery.of(context).disableAnimations ? 1.ms : 240.ms, delay: MediaQuery.of(context).disableAnimations ? 0.ms : 120.ms),
+          ],
+        ),
 
           SizedBox(height: res.hp(2)),
           Text(
@@ -593,7 +600,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
           ],
         ],
       ),
-    ).animate().fadeIn(duration: 600.ms).slideX(begin: 0.1, end: 0);
+    );
   }
 
   Widget _buildTipCard(
