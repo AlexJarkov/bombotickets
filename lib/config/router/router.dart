@@ -49,9 +49,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/scanner',
       name: 'scanner',
-      builder: (context, state) => const TicketScannerScreen(),
+      builder: (context, state) => const QrScannerScreen(),
     ),
-
-    // Settings screen removed; options now live in Profile
   ],
 );

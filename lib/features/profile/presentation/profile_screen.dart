@@ -10,6 +10,7 @@ import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/app_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -274,11 +275,10 @@ class ProfileScreen extends ConsumerWidget {
                   Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius:
-                          BorderRadius.circular(AppTheme.borderRadiusLarge),
-                      border: Border.all(
-                        color: Colors.red.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusLarge,
                       ),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -290,8 +290,9 @@ class ProfileScreen extends ConsumerWidget {
                             if (context.mounted) context.go('/');
                           }
                         },
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.borderRadiusLarge),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusLarge,
+                        ),
                         child: Padding(
                           padding: EdgeInsets.all(AppTheme.spacingNormal),
                           child: Row(
@@ -325,30 +326,26 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1),
 
-<<<<<<<<< Temporary merge branch 1
-                SizedBox(height: AppTheme.spacingLarge),
+                  SizedBox(height: AppTheme.spacingLarge),
 
-                // Logout Button Simple
-                _buildMenuItem(
-                  context,
-                  icon: Icons.logout_rounded,
-                  title: 'Cerrar Sesión',
-                  onTap: () async {
-                    final shouldLogout = await _showLogoutDialog(context);
-                    if (shouldLogout == true) {
-                      await ref.read(authProvider.notifier).logout();
-                      if (context.mounted) {
-                        context.go('/splash');
+                  // Logout Button Simple
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.logout_rounded,
+                    title: 'Cerrar Sesión',
+                    onTap: () async {
+                      final shouldLogout = await _showLogoutDialog(context);
+                      if (shouldLogout == true) {
+                        await ref.read(authProvider.notifier).logout();
+                        if (context.mounted) {
+                          context.go('/splash');
+                        }
                       }
-                    }
-                  },
-                  res: res,
-                  isLogout: true,
-                ),
+                    },
+                    res: res,
+                    isLogout: true,
+                  ),
 
-                SizedBox(height: AppTheme.spacingLarge),
-              ],
-=========
                   SizedBox(height: AppTheme.spacingLarge),
                 ],
               ),
