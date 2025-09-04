@@ -85,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
                           style: GoogleFonts.poppins(
                             fontSize: AppTheme.fontSizeH3 - 2,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.bodyFontColor,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -248,8 +248,9 @@ class ProfileScreen extends ConsumerWidget {
                         onTap: () async {
                           final shouldLogout = await _showLogoutDialog(context);
                           if (shouldLogout == true) {
-                            ref.read(authProvider.notifier).logout();
-                            if (context.mounted) context.go('/');
+                            await ref.read(authProvider.notifier).logout();
+                            if (!context.mounted) return;
+                            context.go('/login');
                           }
                         },
                         borderRadius:

@@ -5,8 +5,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/widgets/app_card.dart';
-import 'package:bombotickets/features/shared/widgets/gradient_background.dart';
+import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:motion_toast/motion_toast.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:auto_size_text/auto_size_text.dart';
@@ -151,7 +152,13 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = MobileScannerController();
+    final bool preferFrontCamera = kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+    _controller = MobileScannerController(
+      facing: preferFrontCamera ? CameraFacing.front : CameraFacing.back,
+    );
   }
 
   @override
@@ -166,7 +173,11 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
     final theme = Theme.of(context);
     final scannerState = ref.watch(ticketScannerProvider);
 
-    return GradientBackground(
+    final reduce = MediaQuery.of(context).disableAnimations;
+    return AnimatedBackground(
+      style: BackgroundStyle.surface,
+      animated: !reduce,
+      intensity: 0.6,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -924,7 +935,13 @@ class _TicketScannerScreenContentState
   @override
   void initState() {
     super.initState();
-    _controller = MobileScannerController();
+    final bool preferFrontCamera = kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+    _controller = MobileScannerController(
+      facing: preferFrontCamera ? CameraFacing.front : CameraFacing.back,
+    );
   }
 
   @override
@@ -939,7 +956,11 @@ class _TicketScannerScreenContentState
     final theme = Theme.of(context);
     final scannerState = ref.watch(ticketScannerProvider);
 
-    return GradientBackground(
+    final reduce = MediaQuery.of(context).disableAnimations;
+    return AnimatedBackground(
+      style: BackgroundStyle.surface,
+      animated: !reduce,
+      intensity: 0.6,
       child: SafeArea(
         child: Column(
           children: [

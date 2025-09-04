@@ -103,22 +103,83 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final bool isWide = width >= 1000;
 
+    if (isWide) {
+      // Wide layout: NavigationRail on the left, content centered with max width
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Row(
+          children: [
+            SafeArea(
+              child: NavigationRail(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (index) => _onItemTapped(index),
+                labelType: NavigationRailLabelType.all,
+                minWidth: 72,
+                groupAlignment: -0.9,
+                leading: const SizedBox(height: 8),
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home),
+                    label: Text('Inicio'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.confirmation_number_outlined),
+                    selectedIcon: Icon(Icons.confirmation_number),
+                    label: Text('Tickets'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.qr_code_scanner_outlined),
+                    selectedIcon: Icon(Icons.qr_code_scanner),
+                    label: Text('Escanear'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.person_outline),
+                    selectedIcon: Icon(Icons.person),
+                    label: Text('Perfil'),
+                  ),
+                ],
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    physics: const BouncingScrollPhysics(),
+                    children: const [
+                      HomeScreen(),
+                      TicketsScreen(),
+                      QRScannerContent(showAppBar: false),
+                      ProfileScreen(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Default layout (phones/tablets): BottomNavigationBar
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
         physics: const BouncingScrollPhysics(),
-        children: [
-          const HomeScreen(),
-          const TicketsScreen(),
-          // Escáner QR integrado en el PageView
-          const QRScannerContent(
-            showAppBar:
-                false, // No mostrar AppBar porque ya está en el MainLayout
-          ),
-          const ProfileScreen(), // Perfil integrado en el PageView
+        children: const [
+          HomeScreen(),
+          TicketsScreen(),
+          QRScannerContent(showAppBar: false),
+          ProfileScreen(),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -131,8 +192,6 @@ class _MainLayoutState extends ConsumerState<MainLayout>
               topLeft: Radius.circular(AppTheme.borderRadiusLarge),
               topRight: Radius.circular(AppTheme.borderRadiusLarge),
             ),
-            // Eliminamos sombra para evitar el aspecto de "card" flotante
-            // y usamos solo un divisor superior sutil.
             border: Border(
               top: BorderSide(
                 color: theme.colorScheme.outline.withOpacity(0.08),
