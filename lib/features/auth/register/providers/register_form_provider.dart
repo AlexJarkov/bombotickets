@@ -20,7 +20,11 @@ class RegisterFormState {
     this.errorMessage,
   });
 
-  bool get isValid => username.isNotEmpty && password.isNotEmpty;
+  bool get isValid =>
+      username.isNotEmpty &&
+      email.isNotEmpty &&
+      password.isNotEmpty &&
+      password == password2;
 
   RegisterFormState copyWith({
     String? username,
@@ -78,7 +82,6 @@ class RegisterFormNotifier extends StateNotifier<RegisterFormState> {
             username: state.username,
             email: state.email,
             password: state.password,
-            password2: state.password2,
           );
     } catch (e) {
       state = state.copyWith(isPosting: false, errorMessage: e.toString());

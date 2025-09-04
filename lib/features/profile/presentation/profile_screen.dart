@@ -64,7 +64,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       SizedBox(height: AppTheme.spacingMedium),
                       AutoSizeText(
-                        authState.user?.email ?? 'Usuario',
+                        authState.user?.username ?? 'Usuario',
                         style: GoogleFonts.poppins(
                           fontSize: AppTheme.fontSizeH3,
                           fontWeight: FontWeight.bold,

@@ -27,19 +27,16 @@ class SplashNotifier extends StateNotifier<SplashState> {
     try {
       state = state.copyWith(status: SplashStatus.checkingAuth);
 
-      // Check if we have stored credentials
+      // Check if we have stored Bearer token
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-      final refreshToken = prefs.getString('refresh_token');
 
-      log(
-        "Splash: Checking stored tokens - access: ${token != null}, refresh: ${refreshToken != null}",
-      );
+      log("Splash: Checking stored token - token: ${token != null}");
 
       // Add a minimum splash duration for smooth UX
       await Future.delayed(const Duration(milliseconds: 1500));
 
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
         // We have a token, assume user is authenticated
         // In a real app, you might want to validate the token here
         state = state.copyWith(status: SplashStatus.navigateToHome);

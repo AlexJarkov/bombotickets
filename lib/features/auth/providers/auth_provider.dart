@@ -39,12 +39,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       log("Login successful: $response");
 
       final user = User(
-        email: response['email'],
         username: response['username'],
-        userId: response['user_id'],
-        //rol: response['rol'],
-        refresh: response['refresh'],
-        access: response['access'],
+        token: response['token'],
       );
 
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
@@ -52,7 +48,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       log("Login error: ${e.toString()}");
       state = state.copyWith(
         status: AuthStatus.notAuthenticated,
-        errorMessage: e.toString(),
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
     }
   }
@@ -61,22 +57,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String username,
     required String email,
     required String password,
-    required String password2,
   }) async {
     state = state.copyWith(status: AuthStatus.checking, errorMessage: null);
     try {
-      final response = await authRepository.register(
-        username,
-        email,
-        password,
-        password2,
-      );
+      final response = await authRepository.register(username, email, password);
 
       log("Register successful: $response");
-      state = AuthState(
-        status: AuthStatus.authenticated,
-        //user: user,
-      );
+
+      // After successful registration, set status to authenticated
+      // Note: The API returns just a success message, not user data
+      state = state.copyWith(status: AuthStatus.authenticated);
     } on Exception catch (e) {
       log("Register error: ${e.toString()}");
       state = state.copyWith(
@@ -86,12 +76,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  void showState() {
-    log("USER: ${state.user}");
+  Future<void> logout() async {
+    await authRepository.logout();
+    state = AuthState(status: AuthStatus.notAuthenticated);
   }
 
-  void logout() {
-    state = AuthState(status: AuthStatus.notAuthenticated);
+  void showState() {
+    log("USER: ${state.user}");
   }
 }
 

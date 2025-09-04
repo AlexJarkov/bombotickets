@@ -427,8 +427,9 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
                 color: AppTheme.grey1,
               ),
               splashRadius: 20,
-              tooltip:
-                  _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
+              tooltip: _obscurePassword
+                  ? 'Mostrar contraseña'
+                  : 'Ocultar contraseña',
             ),
           ),
 

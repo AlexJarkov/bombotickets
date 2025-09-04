@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:bombotickets/config/environment.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthRepository {
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: Environment.apiUrl,
+      baseUrl: 'https://ticketero-production.up.railway.app/api',
       connectTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 60),
     ),
@@ -13,16 +13,26 @@ class AuthRepository {
   Future<dynamic> login(String username, String password) async {
     try {
       final response = await _dio.post(
-        '/usuarios/login/',
+        '/login',
         data: {'username': username, 'password': password},
       );
       if (response.statusCode == 200) {
+        // Store the Bearer token in SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        final token = response.data['token'];
+        await prefs.setString('token', token);
+
         return response.data;
       } else {
         throw Exception('Error al iniciar sesión: ${response.statusMessage}');
       }
     } catch (e) {
-      throw Exception('Error al iniciar sesión $e');
+      if (e is DioException) {
+        throw Exception(
+          'Error al iniciar sesión: ${e.response?.data ?? e.message}',
+        );
+      }
+      throw Exception('Error al iniciar sesión: $e');
     }
   }
 
@@ -30,17 +40,11 @@ class AuthRepository {
     String username,
     String email,
     String password,
-    String password2,
   ) async {
     try {
       final response = await _dio.post(
-        '/usuarios/register/',
-        data: {
-          'username': username,
-          'email': email,
-          'password': password,
-          'password2': password2,
-        },
+        '/signup',
+        data: {'username': username, 'email': email, 'password': password},
       );
       if (response.statusCode == 200) {
         return response.data;
@@ -48,7 +52,17 @@ class AuthRepository {
         throw Exception('Error al crear la cuenta: ${response.statusMessage}');
       }
     } catch (e) {
-      throw Exception('Error al crear la cuenta $e');
+      if (e is DioException) {
+        throw Exception(
+          'Error al crear la cuenta: ${e.response?.data ?? e.message}',
+        );
+      }
+      throw Exception('Error al crear la cuenta: $e');
     }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
   }
 }

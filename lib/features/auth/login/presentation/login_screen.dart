@@ -297,12 +297,12 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
             ),
 
           CustomInputField(
-            label: 'Correo electrónico',
-            prefixIcon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
+            label: 'Nombre de usuario',
+            prefixIcon: Icons.person_outline,
+            keyboardType: TextInputType.text,
             onChanged: ref.read(loginFormProvider.notifier).onUsernameChange,
             errorMessage: loginForm.isFormPosted && loginForm.username.isEmpty
-                ? 'El correo es requerido'
+                ? 'El nombre de usuario es requerido'
                 : null,
             isFormPosted: loginForm.isFormPosted,
           ),
@@ -340,18 +340,16 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
           CustomFilledButton(
             text: 'Iniciar sesión',
             isLoading: loginForm.isPosting,
-            // onPressed: loginForm.isPosting
-            //     ? null
-            //     : () async {
-            //         if (loginForm.username.isEmpty ||
-            //             loginForm.password.isEmpty) {
-            //           // No podemos usar setError porque no existe en este provider
-            //           return;
-            //         }
+            onPressed: loginForm.isPosting
+                ? null
+                : () async {
+                    if (loginForm.username.isEmpty ||
+                        loginForm.password.isEmpty) {
+                      return;
+                    }
 
-            //         await ref.read(loginFormProvider.notifier).onFormSubmit();
-            //       },
-            onPressed: () => {context.pushReplacement('/home')},
+                    await ref.read(loginFormProvider.notifier).onFormSubmit();
+                  },
             buttonColor: AppTheme.primaryColor,
           ),
 
