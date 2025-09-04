@@ -132,26 +132,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     .fadeIn(duration: 300.ms);
                               })(),
 
-                          _QuickAccessCard(
-                                icon: Icons.shopping_cart_rounded,
-                                title: 'Comprar',
-                                subtitle: 'Eventos disponibles',
-                                color: AppTheme.successColor,
-                                onTap: () {
-                                  // Ir al tab de Tickets (índice 1) -> Comprar por defecto
-                                  ref.read(ticketsTabProvider.notifier).state =
-                                      0;
-                                  context.go('/clientes');
-                                },
-                              )
-                              .animate()
-                              .slideY(
-                                duration: 500.ms,
-                                delay: 300.ms,
-                                begin: 0.3,
-                                end: 0,
-                              )
-                              .fadeIn(),
+                          (() {
+                                final w = _QuickAccessCard(
+                                  icon: Icons.shopping_cart_rounded,
+                                  title: 'Comprar',
+                                  subtitle: 'Eventos disponibles',
+                                  color: AppTheme.successColor,
+                                  onTap: () {
+                                    // Ir al tab de Tickets (índice 1) -> Comprar por defecto
+                                    ref.read(ticketsTabProvider.notifier).state = 0;
+                                    context.go('/clientes');
+                                  },
+                                );
+                                if (reduce) return w;
+                                return w
+                                    .animate()
+                                    .slideY(
+                                      duration: 300.ms,
+                                      delay: 180.ms,
+                                      begin: 0.18,
+                                      end: 0,
+                                    )
+                                    .fadeIn(duration: 300.ms);
+                              })(),
 
                           (() {
                                 final w = _QuickAccessCard(

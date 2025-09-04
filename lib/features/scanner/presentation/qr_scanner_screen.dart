@@ -1059,22 +1059,7 @@ class _TicketScannerScreenContentState
                       child: _buildModernScannerArea(res, theme),
                     ),
 
-                    // Inner instructions moved below camera
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingNormal,
-                      ),
-                      child: Text(
-                        'Mantén el QR en el área marcada. El escaneo se realizará automáticamente',
-                        style: GoogleFonts.inter(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: AppTheme.fontSizeBodyNormal,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-
-                    // Stats rápidas
+                    // Mensaje dentro de la tarjeta bajo el escáner
                     _buildQuickStats(res, theme, scannerState),
 
                     // Last Scanned Ticket Info
@@ -1644,28 +1629,44 @@ class _TicketScannerScreenContentState
         border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: _buildStatItem(
-              'Escaneados Hoy',
-              '${state.history.length}',
+          Container(
+            padding: EdgeInsets.all(AppTheme.spacingSmall),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+            ),
+            child: Icon(
               Icons.qr_code_scanner_rounded,
-              res,
+              color: Colors.white,
+              size: res.dp(2.5),
             ),
           ),
-          Container(
-            width: 1,
-            height: res.hp(5),
-            color: Colors.white.withOpacity(0.3),
-          ),
+          SizedBox(width: AppTheme.spacingNormal),
           Expanded(
-            child: _buildStatItem(
-              'Último Escaneo',
-              state.scanTime != null
-                  ? '${state.scanTime!.hour.toString().padLeft(2, '0')}:${state.scanTime!.minute.toString().padLeft(2, '0')}'
-                  : '--:--',
-              Icons.access_time_rounded,
-              res,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AutoSizeText(
+                  'Mantén el QR en el área marcada',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: AppTheme.fontSizeBodyLarge,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                ),
+                SizedBox(height: AppTheme.spacingSmall / 2),
+                AutoSizeText(
+                  'El escaneo se realizará automáticamente',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
             ),
           ),
         ],
@@ -1673,37 +1674,6 @@ class _TicketScannerScreenContentState
     );
   }
 
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Responsive res,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white.withOpacity(0.7), size: res.dp(2.5)),
-        SizedBox(height: AppTheme.spacingSmall / 2),
-        AutoSizeText(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: AppTheme.fontSizeH3,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-          maxLines: 1,
-        ),
-        AutoSizeText(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: AppTheme.fontSizeBodyNormal,
-            color: Colors.white.withOpacity(0.7),
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-        ),
-      ],
-    );
-  }
 
   Widget _buildModernTicketInfo(
     Responsive res,
