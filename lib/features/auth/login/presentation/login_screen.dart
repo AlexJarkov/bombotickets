@@ -11,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:motion_toast/motion_toast.dart';
 
 class LoginScreen extends ConsumerWidget {
   static String name = 'login';
@@ -207,42 +206,72 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final linkColor = isDark ? Colors.white : AppTheme.primaryColor;
 
+    // Limpiar errores del auth provider al entrar a login
     ref.listen(authProvider, (previous, next) {
-      if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
-        MotionToast(
-          icon: Icons.error_rounded,
-          primaryColor: AppTheme.errorColorLight,
-          secondaryColor: Colors.white,
-          title: Text(
-            'Error',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-          description: Text(
-            next.errorMessage!,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 14,
-            ),
-          ),
-          toastDuration: const Duration(seconds: 3),
-          width: 320,
-          height: 80,
-          borderRadius: 16,
-        ).show(context);
+      if (previous == null) {
+        // Primera vez que se monta el widget
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(authProvider.notifier).clearError();
+        });
       }
 
       if (next.status == AuthStatus.authenticated &&
           previous?.status != next.status) {
         if (context.mounted) {
-          context.go('/home');
+          // Mostrar overlay con GlassCard de éxito
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            barrierColor: Colors.black.withValues(alpha: 0.3),
+            builder: (context) => Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppTheme.spacingLarge),
+                child: GlassCard(
+                  padding: EdgeInsets.all(AppTheme.spacingLarge),
+                  borderRadius: AppTheme.borderRadiusLarge,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.login_outlined,
+                        color: Colors.green[600],
+                        size: responsive.dp(6),
+                      ),
+                      SizedBox(height: AppTheme.spacingMedium),
+                      Text(
+                        'Acceso Autorizado',
+                        style: GoogleFonts.inter(
+                          fontSize: responsive.dp(2.2),
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: AppTheme.spacingSmall),
+                      Text(
+                        'Sesión iniciada correctamente.\nRedirigiendo a la aplicación.',
+                        style: GoogleFonts.inter(
+                          fontSize: responsive.dp(1.6),
+                          color: isDark ? Colors.white70 : Colors.black54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          // Redirigir después del delay
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            if (!context.mounted) return;
+            Navigator.of(context).pop(); // Cerrar dialog
+            context.go('/home');
+          });
         }
       }
     });
-
     return GlassCard(
       padding: EdgeInsets.all(AppTheme.spacingLarge),
       borderRadius: AppTheme.borderRadiusLarge,
@@ -360,7 +389,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
             child: GestureDetector(
               onTap: () => context.push('/register'),
               child: Text(
-                '¿No tienes cuenta? Registrarse',
+                '¿No tienes cuenta? Registrate',
                 style: GoogleFonts.inter(
                   color: linkColor,
                   fontSize: responsive.dp(1.6),

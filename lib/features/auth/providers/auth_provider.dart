@@ -4,7 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/auth/entities/user.dart';
 import 'package:bombotickets/features/auth/repositories/auth_repository.dart';
 
-enum AuthStatus { checking, authenticated, notAuthenticated }
+enum AuthStatus {
+  checking,
+  authenticated,
+  notAuthenticated,
+  registrationSuccess,
+}
 
 class AuthState {
   final AuthStatus status;
@@ -64,9 +69,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       log("Register successful: $response");
 
-      // After successful registration, set status to authenticated
-      // Note: The API returns just a success message, not user data
-      state = state.copyWith(status: AuthStatus.authenticated);
+      // After successful registration, set status to registrationSuccess
+      // so the register screen can show success toast and redirect to login
+      state = state.copyWith(status: AuthStatus.registrationSuccess);
     } on Exception catch (e) {
       log("Register error: ${e.toString()}");
       state = state.copyWith(
@@ -78,6 +83,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await authRepository.logout();
+    state = AuthState(status: AuthStatus.notAuthenticated);
+  }
+
+  void clearError() {
+    state = state.copyWith(errorMessage: null);
+  }
+
+  void clearState() {
     state = AuthState(status: AuthStatus.notAuthenticated);
   }
 

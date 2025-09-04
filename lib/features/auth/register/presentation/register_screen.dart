@@ -11,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:motion_toast/motion_toast.dart';
 
 class RegisterScreen extends ConsumerWidget {
   static String name = 'register';
@@ -90,7 +89,9 @@ class RegisterScreen extends ConsumerWidget {
                                   curve: Curves.fastOutSlowIn,
                                 ),
 
-                            SizedBox(height: res.hp(2)), // Reducido de 4 a 2
+                            SizedBox(
+                              height: res.hp(0.5),
+                            ), // Reducido de 2 a 0.5 para subir el logo
                             // Logo
                             Center(
                               child:
@@ -252,9 +253,6 @@ class _RegisterForm extends ConsumerStatefulWidget {
 }
 
 class _RegisterFormState extends ConsumerState<_RegisterForm> {
-  bool _obscurePassword = true;
-  bool _obscurePassword2 = true;
-
   @override
   Widget build(BuildContext context) {
     final registerForm = ref.watch(registerFormProvider);
@@ -263,63 +261,67 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final linkColor = isDark ? Colors.white : AppTheme.primaryColor;
 
+    // Limpiar errores del auth provider al entrar a registro
     ref.listen(authProvider, (previous, next) {
-      if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
-        MotionToast(
-          icon: Icons.error_rounded,
-          primaryColor: AppTheme.errorColorLight,
-          secondaryColor: Colors.white,
-          title: Text(
-            'Error',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-          description: Text(
-            next.errorMessage!,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 14,
-            ),
-          ),
-          toastDuration: const Duration(seconds: 3),
-          width: 320,
-          height: 80,
-          borderRadius: 16,
-        ).show(context);
+      if (previous == null) {
+        // Primera vez que se monta el widget
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(authProvider.notifier).clearError();
+        });
       }
 
-      if (next.status == AuthStatus.authenticated &&
+      if (next.status == AuthStatus.registrationSuccess &&
           previous?.status != next.status) {
         if (context.mounted) {
-          MotionToast(
-            icon: Icons.check_circle_rounded,
-            primaryColor: AppTheme.successColorLight,
-            secondaryColor: Colors.white,
-            title: Text(
-              'Registro exitoso',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+          // Mostrar overlay con GlassCard de éxito
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            barrierColor: Colors.black.withValues(alpha: 0.3),
+            builder: (context) => Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppTheme.spacingLarge),
+                child: GlassCard(
+                  padding: EdgeInsets.all(AppTheme.spacingLarge),
+                  borderRadius: AppTheme.borderRadiusLarge,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.green[600],
+                        size: responsive.dp(6),
+                      ),
+                      SizedBox(height: AppTheme.spacingMedium),
+                      Text(
+                        'Registro Exitoso',
+                        style: GoogleFonts.inter(
+                          fontSize: responsive.dp(2.2),
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: AppTheme.spacingSmall),
+                      Text(
+                        'Su cuenta ha sido creada correctamente.\nSerá redirigido al inicio de sesión.',
+                        style: GoogleFonts.inter(
+                          fontSize: responsive.dp(1.6),
+                          color: isDark ? Colors.white70 : Colors.black54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            description: Text(
-              'Tu cuenta ha sido creada correctamente',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
-              ),
-            ),
-            toastDuration: const Duration(seconds: 2),
-            width: 320,
-            height: 80,
-            borderRadius: 16,
-          ).show(context);
-          Future.delayed(const Duration(milliseconds: 1500), () {
+          );
+
+          // Redirigir después del delay
+          Future.delayed(const Duration(milliseconds: 2500), () {
             if (!context.mounted) return;
+            Navigator.of(context).pop(); // Cerrar dialog
             context.go('/login');
           });
         }
@@ -409,28 +411,13 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           CustomInputField(
             label: 'Contraseña',
             prefixIcon: Icons.lock_outline,
-            obscureText: _obscurePassword,
+            obscureText: true,
             onChanged: ref.read(registerFormProvider.notifier).onPasswordChange,
             errorMessage:
                 registerForm.isFormPosted && registerForm.password.isEmpty
                 ? 'La contraseña es requerida'
                 : null,
             isFormPosted: registerForm.isFormPosted,
-            suffixIcon: IconButton(
-              onPressed: () {
-                setState(() => _obscurePassword = !_obscurePassword);
-              },
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                color: AppTheme.grey1,
-              ),
-              splashRadius: 20,
-              tooltip: _obscurePassword
-                  ? 'Mostrar contraseña'
-                  : 'Ocultar contraseña',
-            ),
           ),
 
           SizedBox(height: responsive.hp(2.5)),
@@ -438,32 +425,19 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           CustomInputField(
             label: 'Confirmar contraseña',
             prefixIcon: Icons.lock_outline,
-            obscureText: _obscurePassword2,
+            obscureText: true,
             onChanged: ref
                 .read(registerFormProvider.notifier)
                 .onPassword2Change,
             errorMessage:
-                registerForm.isFormPosted &&
-                    (registerForm.password2.isEmpty ||
-                        registerForm.password != registerForm.password2)
+                registerForm.password.isNotEmpty &&
+                    registerForm.password2.isNotEmpty &&
+                    registerForm.password != registerForm.password2
                 ? 'Las contraseñas no coinciden'
+                : registerForm.isFormPosted && registerForm.password2.isEmpty
+                ? 'Confirme su contraseña'
                 : null,
-            isFormPosted: registerForm.isFormPosted,
-            suffixIcon: IconButton(
-              onPressed: () {
-                setState(() => _obscurePassword2 = !_obscurePassword2);
-              },
-              icon: Icon(
-                _obscurePassword2
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                color: AppTheme.grey1,
-              ),
-              splashRadius: 20,
-              tooltip: _obscurePassword2
-                  ? 'Mostrar contraseña'
-                  : 'Ocultar contraseña',
-            ),
+            isFormPosted: true, // Cambiado para mostrar errores en tiempo real
           ),
 
           SizedBox(height: responsive.hp(4)),
@@ -471,26 +445,9 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           CustomFilledButton(
             text: 'Crear cuenta',
             isLoading: registerForm.isPosting,
-            onPressed: registerForm.isPosting
+            onPressed: registerForm.isPosting || !registerForm.isValid
                 ? null
                 : () async {
-                    if (registerForm.username.isEmpty ||
-                        registerForm.email.isEmpty ||
-                        registerForm.password.isEmpty ||
-                        registerForm.password2.isEmpty) {
-                      ref
-                          .read(registerFormProvider.notifier)
-                          .setError('Complete todos los campos');
-                      return;
-                    }
-
-                    if (registerForm.password != registerForm.password2) {
-                      ref
-                          .read(registerFormProvider.notifier)
-                          .setError('Las contraseñas no coinciden');
-                      return;
-                    }
-
                     await ref
                         .read(registerFormProvider.notifier)
                         .onFormSubmit();

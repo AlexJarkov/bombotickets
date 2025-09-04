@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bombotickets/config/environment.dart';
 
 class AuthRepository {
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'https://ticketero-production.up.railway.app/api',
+      baseUrl: Environment.apiUrl,
       connectTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 60),
     ),
@@ -46,7 +47,7 @@ class AuthRepository {
         '/signup',
         data: {'username': username, 'email': email, 'password': password},
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return response.data;
       } else {
         throw Exception('Error al crear la cuenta: ${response.statusMessage}');
@@ -62,7 +63,11 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+    } catch (e) {
+      throw Exception('Error al cerrar sesión: $e');
+    }
   }
 }

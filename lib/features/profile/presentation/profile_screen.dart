@@ -117,9 +117,9 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () async {
                     final shouldLogout = await _showLogoutDialog(context);
                     if (shouldLogout == true) {
-                      ref.read(authProvider.notifier).logout();
+                      await ref.read(authProvider.notifier).logout();
                       if (context.mounted) {
-                        context.go('/');
+                        context.go('/splash');
                       }
                     }
                   },
@@ -200,41 +200,37 @@ class ProfileScreen extends ConsumerWidget {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: AutoSizeText(
+        title: Text(
           'Cerrar Sesión',
           style: GoogleFonts.poppins(
             fontSize: AppTheme.fontSizeH3,
             fontWeight: FontWeight.bold,
           ),
-          maxLines: 1,
         ),
-        content: AutoSizeText(
+        content: Text(
           '¿Estás seguro de que quieres cerrar sesión?',
           style: GoogleFonts.inter(fontSize: AppTheme.fontSizeBodyNormal),
-          maxLines: 2,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: AutoSizeText(
+            child: Text(
               'Cancelar',
               style: GoogleFonts.inter(
                 fontSize: AppTheme.fontSizeBodyNormal,
                 color: AppTheme.grey1,
               ),
-              maxLines: 1,
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: AutoSizeText(
+            child: Text(
               'Cerrar sesión',
               style: GoogleFonts.inter(
                 fontSize: AppTheme.fontSizeBodyNormal,
                 color: Colors.red,
                 fontWeight: FontWeight.w500,
               ),
-              maxLines: 1,
             ),
           ),
         ],
