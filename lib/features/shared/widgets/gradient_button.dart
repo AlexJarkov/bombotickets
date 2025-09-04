@@ -48,7 +48,8 @@ class _GradientButtonState extends State<GradientButton>
     with SingleTickerProviderStateMixin {
   bool _isPressed = false;
 
-  Gradient get _gradient {
+  // Always return a LinearGradient so we can access .colors safely
+  LinearGradient get _gradient {
     switch (widget.style) {
       case GradientButtonStyle.primary:
         return AppTheme.primaryGradient;
@@ -59,9 +60,17 @@ class _GradientButtonState extends State<GradientButton>
           end: Alignment.bottomRight,
         );
       case GradientButtonStyle.energy:
-        return AppTheme.energyGradient;
+        return const LinearGradient(
+          colors: [Color(0xFFF97316), Color(0xFFFB923C)], // Vibrant orange
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
       case GradientButtonStyle.success:
-        return AppTheme.successGradient;
+        return const LinearGradient(
+          colors: [Color(0xFF22C55E), Color(0xFF16A34A)], // Greens
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
       case GradientButtonStyle.warning:
         return const LinearGradient(
           colors: [Color(0xFFF59E0B), Color(0xFFEAB308)],

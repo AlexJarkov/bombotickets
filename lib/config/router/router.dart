@@ -3,12 +3,11 @@ import 'package:bombotickets/features/auth/register/presentation/register_screen
 import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dart';
 import 'package:bombotickets/config/layout/main_layout.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
-import 'package:bombotickets/features/settings/presentation/settings_screen.dart';
 import 'package:go_router/go_router.dart';
 
 // GoRouter configuration
 final appRouter = GoRouter(
-  initialLocation: '/splash',
+  initialLocation: '/home',
   routes: [
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(
@@ -53,10 +52,6 @@ final appRouter = GoRouter(
       builder: (context, state) => const TicketScannerScreen(),
     ),
 
-    GoRoute(
-      path: '/settings',
-      name: 'settings',
-      builder: (context, state) => const SettingsScreen(),
-    ),
+    // Settings screen removed; options now live in Profile
   ],
 );

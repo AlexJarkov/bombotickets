@@ -38,6 +38,7 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final bool disableAnimations = MediaQuery.of(context).disableAnimations;
 
     // Patrón profesional de sombras y bordes
     final modernShadows =
@@ -104,25 +105,28 @@ class GlassCard extends StatelessWidget {
     if (onTap != null) {
       card = GestureDetector(
         onTap: onTap,
-        child: card
-            .animate(target: 1)
-            .scale(
-              duration: 120.ms,
-              curve: Curves.easeOut,
-              begin: const Offset(1.0, 1.0),
-              end: const Offset(0.98, 0.98),
-            ),
+        child: disableAnimations
+            ? card
+            : card
+                .animate(target: 1)
+                .scale(
+                  duration: 100.ms,
+                  curve: Curves.easeOut,
+                  begin: const Offset(1.0, 1.0),
+                  end: const Offset(0.98, 0.98),
+                ),
       );
     }
 
     // Animaciones de entrada profesionales (más rápidas)
-    if (animated) {
+    final bool shouldAnimate = animated && !disableAnimations;
+    if (shouldAnimate) {
       return card
-          .animate()
-          .fadeIn(duration: 240.ms, curve: Curves.fastOutSlowIn)
+          .animate(target: 1)
+          .fadeIn(duration: 220.ms, curve: Curves.fastOutSlowIn)
           .slideY(
-            duration: 240.ms,
-            begin: 0.08, // Movimiento más sutil
+            duration: 220.ms,
+            begin: 0.06, // Movimiento más sutil
             end: 0,
             curve: Curves.fastOutSlowIn,
           );

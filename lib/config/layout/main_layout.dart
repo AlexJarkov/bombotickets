@@ -1,9 +1,9 @@
 import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/home/presentation/home_screen.dart';
-import 'package:bombotickets/features/profile/presentation/profile_screen.dart';
 import 'package:bombotickets/features/tickets/presentation/tickets_screen.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
+import 'package:bombotickets/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

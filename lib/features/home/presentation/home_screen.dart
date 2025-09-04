@@ -31,10 +31,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
+    final reduce = MediaQuery.of(context).disableAnimations;
 
     return AnimatedBackground(
       style: BackgroundStyle.surface,
-      animated: true,
+      animated: !reduce,
       intensity: 0.6,
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -50,15 +51,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // Logo con animación
                   Center(
-                    child: Image.asset(
-                      'assets/images/logo_masterpass.png',
-                      width: res.wp(50),
-                      fit: BoxFit.contain,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black,
-                      colorBlendMode: BlendMode.srcIn,
-                    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.3),
+                    child: (() {
+                      final widget = Image.asset(
+                        'assets/images/logo_masterpass.png',
+                        width: res.wp(50),
+                        fit: BoxFit.contain,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                        colorBlendMode: BlendMode.srcIn,
+                      );
+                      if (reduce) return widget;
+                      return widget
+                          .animate()
+                          .fadeIn(duration: 320.ms)
+                          .slideY(begin: -0.18, duration: 320.ms);
+                    })(),
                   ),
 
                   SizedBox(height: AppTheme.spacingLarge),
@@ -101,24 +109,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         mainAxisSpacing: AppTheme.spacingNormal,
                         childAspectRatio: 1.0,
                         children: [
-                          _QuickAccessCard(
-                                icon: Icons.qr_code_scanner_rounded,
-                                title: 'Validar Ticket',
-                                subtitle: 'Escanear QR',
-                                color: AppTheme.primaryColor,
-                                onTap: () {
-                                  // Ir al tab de Escanear (índice 2)
-                                  context.go('/productos');
-                                },
-                              )
-                              .animate()
-                              .slideY(
-                                duration: 500.ms,
-                                delay: 200.ms,
-                                begin: 0.3,
-                                end: 0,
-                              )
-                              .fadeIn(),
+                          (() {
+                                final w = _QuickAccessCard(
+                                  icon: Icons.qr_code_scanner_rounded,
+                                  title: 'Validar Ticket',
+                                  subtitle: 'Escanear QR',
+                                  color: AppTheme.primaryColor,
+                                  onTap: () {
+                                    // Ir al tab de Escanear (índice 2)
+                                    context.go('/productos');
+                                  },
+                              );
+                                if (reduce) return w;
+                                return w
+                                    .animate()
+                                    .slideY(
+                                      duration: 300.ms,
+                                      delay: 120.ms,
+                                      begin: 0.18,
+                                      end: 0,
+                                    )
+                                    .fadeIn(duration: 300.ms);
+                              })(),
 
                           _QuickAccessCard(
                                 icon: Icons.shopping_cart_rounded,
@@ -141,45 +153,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               )
                               .fadeIn(),
 
-                          _QuickAccessCard(
-                                icon: Icons.sell_rounded,
-                                title: 'Vender',
-                                subtitle: 'Reventa de tickets',
-                                color: AppTheme.warningColor,
-                                onTap: () {
-                                  // Pre-seleccionar tab Vender (1) y navegar a Tickets (índice 1)
-                                  ref.read(ticketsTabProvider.notifier).state =
-                                      1;
-                                  context.go('/clientes');
-                                },
-                              )
-                              .animate()
-                              .slideY(
-                                duration: 500.ms,
-                                delay: 400.ms,
-                                begin: 0.3,
-                                end: 0,
-                              )
-                              .fadeIn(),
+                          (() {
+                                final w = _QuickAccessCard(
+                                  icon: Icons.sell_rounded,
+                                  title: 'Vender',
+                                  subtitle: 'Reventa de tickets',
+                                  color: AppTheme.warningColor,
+                                  onTap: () {
+                                    // Pre-seleccionar tab Vender (1) y navegar a Tickets (índice 1)
+                                    ref.read(ticketsTabProvider.notifier).state =
+                                        1;
+                                    context.go('/clientes');
+                                  },
+                              );
+                                if (reduce) return w;
+                                return w
+                                    .animate()
+                                    .slideY(
+                                      duration: 300.ms,
+                                      delay: 240.ms,
+                                      begin: 0.18,
+                                      end: 0,
+                                    )
+                                    .fadeIn(duration: 300.ms);
+                              })(),
 
-                          _QuickAccessCard(
-                                icon: Icons.person_rounded,
-                                title: 'Perfil',
-                                subtitle: 'Mi cuenta',
-                                color: AppTheme.secondaryColor,
-                                onTap: () {
-                                  // Ir al tab de Perfil (índice 3)
-                                  context.go('/perfil');
-                                },
-                              )
-                              .animate()
-                              .slideY(
-                                duration: 500.ms,
-                                delay: 500.ms,
-                                begin: 0.3,
-                                end: 0,
-                              )
-                              .fadeIn(),
+                          (() {
+                                final w = _QuickAccessCard(
+                                  icon: Icons.person_rounded,
+                                  title: 'Perfil',
+                                  subtitle: 'Mi cuenta',
+                                  color: AppTheme.secondaryColor,
+                                  onTap: () {
+                                    // Ir al tab de Perfil (índice 3)
+                                    context.go('/perfil');
+                                  },
+                              );
+                                if (reduce) return w;
+                                return w
+                                    .animate()
+                                    .slideY(
+                                      duration: 300.ms,
+                                      delay: 300.ms,
+                                      begin: 0.18,
+                                      end: 0,
+                                    )
+                                    .fadeIn(duration: 300.ms);
+                              })(),
                         ],
                       ),
                     ],
