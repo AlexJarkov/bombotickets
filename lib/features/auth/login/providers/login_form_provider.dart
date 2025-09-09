@@ -2,24 +2,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/auth/providers/auth_provider.dart';
 
 class LoginFormState {
-  final String username;
+  final String email;
   final String password;
   final bool isPosting;
   final bool isFormPosted;
   final String? errorMessage;
 
   LoginFormState({
-    this.username = '',
+    this.email = '',
     this.password = '',
     this.isPosting = false,
     this.isFormPosted = false,
     this.errorMessage,
   });
 
-  bool get isValid => username.isNotEmpty && password.isNotEmpty;
+  bool get isValid => email.isNotEmpty && password.isNotEmpty;
 
   LoginFormState copyWith({
-    String? username,
+    String? email,
     String? password,
     String? companyId,
     bool? isPosting,
@@ -27,7 +27,7 @@ class LoginFormState {
     String? errorMessage,
   }) {
     return LoginFormState(
-      username: username ?? this.username,
+      email: email ?? this.email,
       password: password ?? this.password,
       isPosting: isPosting ?? this.isPosting,
       isFormPosted: isFormPosted ?? this.isFormPosted,
@@ -41,8 +41,8 @@ class LoginFormNotifier extends StateNotifier<LoginFormState> {
 
   LoginFormNotifier(this.ref) : super(LoginFormState());
 
-  void onUsernameChange(String value) {
-    state = state.copyWith(username: value);
+  void onEmailChange(String value) {
+    state = state.copyWith(email: value);
   }
 
   void onPasswordChange(String value) {
@@ -55,7 +55,7 @@ class LoginFormNotifier extends StateNotifier<LoginFormState> {
     try {
       await ref
           .read(authProvider.notifier)
-          .loginUser(username: state.username, password: state.password);
+          .loginUser(email: state.email, password: state.password);
     } catch (e) {
       state = state.copyWith(isPosting: false, errorMessage: e.toString());
     } finally {

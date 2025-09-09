@@ -33,18 +33,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier({required this.authRepository}) : super(AuthState());
 
   Future<void> loginUser({
-    required String username,
+    required String email,
     required String password,
   }) async {
     state = state.copyWith(status: AuthStatus.checking, errorMessage: null);
 
     try {
-      final response = await authRepository.login(username, password);
+      final response = await authRepository.login(email, password);
 
       log("Login successful: $response");
 
       final user = User(
-        username: response['username'],
+        username: response['email'], // Using email as username for now
         token: response['token'],
       );
 
@@ -59,18 +59,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> registerUser({
-    required String username,
+    required String nombre,
+    required String apellidoP,
+    required String apellidoM,
     required String email,
     required String password,
   }) async {
     state = state.copyWith(status: AuthStatus.checking, errorMessage: null);
     try {
-      final response = await authRepository.register(username, email, password);
+      final response = await authRepository.register(
+        nombre,
+        apellidoP,
+        apellidoM,
+        email,
+        password,
+      );
 
       log("Register successful: $response");
 
       // After successful registration, set status to registrationSuccess
-      // so the register screen can show success toast and redirect to login
+      // so the register screen can show success toast and redirect to OTP verification
       state = state.copyWith(status: AuthStatus.registrationSuccess);
     } on Exception catch (e) {
       log("Register error: ${e.toString()}");
@@ -78,6 +86,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
         status: AuthStatus.notAuthenticated,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
+    }
+  }
+
+  Future<String> verifyOtp({
+    required String email,
+    required String codigo,
+  }) async {
+    state = state.copyWith(status: AuthStatus.checking, errorMessage: null);
+    try {
+      final response = await authRepository.verifyOtp(email, codigo);
+
+      log("OTP verification successful: $response");
+
+      // After successful OTP verification, redirect to login
+      state = state.copyWith(status: AuthStatus.notAuthenticated);
+
+      // Return the response message
+      return response is String
+          ? response
+          : 'Correo verificado correctamente ✅';
+    } on Exception catch (e) {
+      log("OTP verification error: ${e.toString()}");
+      state = state.copyWith(
+        status: AuthStatus.notAuthenticated,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      rethrow;
     }
   }
 

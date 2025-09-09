@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/auth/providers/auth_provider.dart';
 
 class RegisterFormState {
-  final String username;
+  final String nombre;
+  final String apellidoP;
+  final String apellidoM;
   final String email;
   final String password;
   final String password2;
@@ -11,7 +13,9 @@ class RegisterFormState {
   final String? errorMessage;
 
   RegisterFormState({
-    this.username = '',
+    this.nombre = '',
+    this.apellidoP = '',
+    this.apellidoM = '',
     this.email = '',
     this.password = '',
     this.password2 = '',
@@ -21,13 +25,17 @@ class RegisterFormState {
   });
 
   bool get isValid =>
-      username.isNotEmpty &&
+      nombre.isNotEmpty &&
+      apellidoP.isNotEmpty &&
+      apellidoM.isNotEmpty &&
       email.isNotEmpty &&
       password.isNotEmpty &&
       password == password2;
 
   RegisterFormState copyWith({
-    String? username,
+    String? nombre,
+    String? apellidoP,
+    String? apellidoM,
     String? email,
     String? password,
     String? password2,
@@ -36,7 +44,9 @@ class RegisterFormState {
     String? errorMessage,
   }) {
     return RegisterFormState(
-      username: username ?? this.username,
+      nombre: nombre ?? this.nombre,
+      apellidoP: apellidoP ?? this.apellidoP,
+      apellidoM: apellidoM ?? this.apellidoM,
       email: email ?? this.email,
       password: password ?? this.password,
       password2: password2 ?? this.password2,
@@ -52,8 +62,16 @@ class RegisterFormNotifier extends StateNotifier<RegisterFormState> {
 
   RegisterFormNotifier(this.ref) : super(RegisterFormState());
 
-  void onUsernameChange(String value) {
-    state = state.copyWith(username: value);
+  void onNombreChange(String value) {
+    state = state.copyWith(nombre: value);
+  }
+
+  void onApellidoPChange(String value) {
+    state = state.copyWith(apellidoP: value);
+  }
+
+  void onApellidoMChange(String value) {
+    state = state.copyWith(apellidoM: value);
   }
 
   void onEmailChange(String value) {
@@ -79,7 +97,9 @@ class RegisterFormNotifier extends StateNotifier<RegisterFormState> {
       await ref
           .read(authProvider.notifier)
           .registerUser(
-            username: state.username,
+            nombre: state.nombre,
+            apellidoP: state.apellidoP,
+            apellidoM: state.apellidoM,
             email: state.email,
             password: state.password,
           );

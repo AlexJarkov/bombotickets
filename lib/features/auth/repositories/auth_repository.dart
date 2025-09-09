@@ -11,11 +11,11 @@ class AuthRepository {
     ),
   );
 
-  Future<dynamic> login(String username, String password) async {
+  Future<dynamic> login(String email, String password) async {
     try {
       final response = await _dio.post(
         '/login',
-        data: {'username': username, 'password': password},
+        data: {'email': email, 'password': password},
       );
       if (response.statusCode == 200) {
         // Store the Bearer token in SharedPreferences
@@ -38,14 +38,22 @@ class AuthRepository {
   }
 
   Future<dynamic> register(
-    String username,
+    String nombre,
+    String apellidoP,
+    String apellidoM,
     String email,
     String password,
   ) async {
     try {
       final response = await _dio.post(
         '/signup',
-        data: {'username': username, 'email': email, 'password': password},
+        data: {
+          'nombre': nombre,
+          'apellidoP': apellidoP,
+          'apellidoM': apellidoM,
+          'email': email,
+          'password': password,
+        },
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return response.data;
@@ -59,6 +67,30 @@ class AuthRepository {
         );
       }
       throw Exception('Error al crear la cuenta: $e');
+    }
+  }
+
+  Future<dynamic> verifyOtp(String email, String codigo) async {
+    try {
+      final response = await _dio.post(
+        '/verificar-otp',
+        data: {'email': email, 'codigo': codigo},
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data;
+      } else {
+        throw Exception('Código de verificación incorrecto');
+      }
+    } catch (e) {
+      if (e is DioException) {
+        if (e.response?.statusCode == 400) {
+          throw Exception('Código de verificación incorrecto');
+        }
+        throw Exception(
+          'Error al verificar código: ${e.response?.data ?? e.message}',
+        );
+      }
+      throw Exception('Error al verificar código: $e');
     }
   }
 

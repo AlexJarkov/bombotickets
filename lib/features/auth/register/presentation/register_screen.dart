@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class RegisterScreen extends ConsumerWidget {
@@ -163,7 +162,7 @@ class RegisterScreen extends ConsumerWidget {
                             // Título
                             Text(
                                   'Crear Cuenta',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(
                                     fontSize: res.dp(2.8),
                                     fontWeight: FontWeight.w700,
                                     color: textColor,
@@ -188,7 +187,7 @@ class RegisterScreen extends ConsumerWidget {
 
                             Text(
                                   'Completa los datos para registrarte',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(
                                     fontSize: res.dp(1.8),
                                     color: subtitleColor,
                                   ),
@@ -273,57 +272,11 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
       if (next.status == AuthStatus.registrationSuccess &&
           previous?.status != next.status) {
         if (context.mounted) {
-          // Mostrar overlay con GlassCard de éxito
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            barrierColor: Colors.black.withValues(alpha: 0.3),
-            builder: (context) => Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppTheme.spacingLarge),
-                child: GlassCard(
-                  padding: EdgeInsets.all(AppTheme.spacingLarge),
-                  borderRadius: AppTheme.borderRadiusLarge,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        color: Colors.green[600],
-                        size: responsive.dp(6),
-                      ),
-                      SizedBox(height: AppTheme.spacingMedium),
-                      Text(
-                        'Registro Exitoso',
-                        style: GoogleFonts.inter(
-                          fontSize: responsive.dp(2.2),
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: AppTheme.spacingSmall),
-                      Text(
-                        'Su cuenta ha sido creada correctamente.\nSerá redirigido al inicio de sesión.',
-                        style: GoogleFonts.inter(
-                          fontSize: responsive.dp(1.6),
-                          color: isDark ? Colors.white70 : Colors.black54,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          // Redirigir directamente a verificación OTP
+          final registerForm = ref.read(registerFormProvider);
+          context.go(
+            '/otp-verification?email=${Uri.encodeComponent(registerForm.email)}',
           );
-
-          // Redirigir después del delay
-          Future.delayed(const Duration(milliseconds: 2500), () {
-            if (!context.mounted) return;
-            Navigator.of(context).pop(); // Cerrar dialog
-            context.go('/login');
-          });
         }
       }
     });
@@ -350,7 +303,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
               ),
               child: Text(
                 authState.errorMessage!,
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   color: AppTheme.errorColorLight,
                   fontSize: responsive.dp(1.6),
                   fontWeight: FontWeight.w500,
@@ -373,7 +326,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
               ),
               child: Text(
                 registerForm.errorMessage!,
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   color: AppTheme.errorColorLight,
                   fontSize: responsive.dp(1.6),
                   fontWeight: FontWeight.w500,
@@ -382,12 +335,42 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
             ),
 
           CustomInputField(
-            label: 'Nombre de usuario',
+            label: 'Nombre',
             prefixIcon: Icons.person_outline,
-            onChanged: ref.read(registerFormProvider.notifier).onUsernameChange,
+            onChanged: ref.read(registerFormProvider.notifier).onNombreChange,
             errorMessage:
-                registerForm.isFormPosted && registerForm.username.isEmpty
+                registerForm.isFormPosted && registerForm.nombre.isEmpty
                 ? 'El nombre es requerido'
+                : null,
+            isFormPosted: registerForm.isFormPosted,
+          ),
+
+          SizedBox(height: responsive.hp(2.5)),
+
+          CustomInputField(
+            label: 'Apellido Paterno',
+            prefixIcon: Icons.person_outline,
+            onChanged: ref
+                .read(registerFormProvider.notifier)
+                .onApellidoPChange,
+            errorMessage:
+                registerForm.isFormPosted && registerForm.apellidoP.isEmpty
+                ? 'El apellido paterno es requerido'
+                : null,
+            isFormPosted: registerForm.isFormPosted,
+          ),
+
+          SizedBox(height: responsive.hp(2.5)),
+
+          CustomInputField(
+            label: 'Apellido Materno',
+            prefixIcon: Icons.person_outline,
+            onChanged: ref
+                .read(registerFormProvider.notifier)
+                .onApellidoMChange,
+            errorMessage:
+                registerForm.isFormPosted && registerForm.apellidoM.isEmpty
+                ? 'El apellido materno es requerido'
                 : null,
             isFormPosted: registerForm.isFormPosted,
           ),
@@ -464,7 +447,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
                   context.canPop() ? context.pop() : context.go('/login'),
               child: Text(
                 '¿Ya tienes cuenta? Iniciar sesión',
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   color: linkColor,
                   fontSize: responsive.dp(1.6),
                   fontWeight: FontWeight.w500,

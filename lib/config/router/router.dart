@@ -1,6 +1,7 @@
 import 'package:bombotickets/features/auth/login/presentation/login_screen.dart';
 import 'package:bombotickets/features/auth/register/presentation/register_screen.dart';
 import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dart';
+import 'package:bombotickets/features/auth/otp_verification/presentation/otp_verification_screen.dart';
 import 'package:bombotickets/config/layout/main_layout.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,15 @@ final appRouter = GoRouter(
       path: '/register',
       name: RegisterScreen.name,
       builder: (context, state) => const RegisterScreen(),
+    ),
+
+    GoRoute(
+      path: '/otp-verification',
+      name: OtpVerificationScreen.name,
+      builder: (context, state) {
+        final email = state.uri.queryParameters['email'] ?? '';
+        return OtpVerificationScreen(email: email);
+      },
     ),
 
     GoRoute(

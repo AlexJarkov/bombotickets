@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class LoginScreen extends ConsumerWidget {
@@ -106,7 +105,7 @@ class LoginScreen extends ConsumerWidget {
                             // Título
                             Text(
                                   'Iniciar Sesión',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(
                                     fontSize: res.dp(2.8),
                                     fontWeight: FontWeight.w700,
                                     color: textColor,
@@ -131,7 +130,7 @@ class LoginScreen extends ConsumerWidget {
 
                             Text(
                                   'Ingresa tus datos para continuar',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(
                                     fontSize: res.dp(1.8),
                                     color: subtitleColor,
                                   ),
@@ -240,7 +239,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
                       SizedBox(height: AppTheme.spacingMedium),
                       Text(
                         'Acceso Autorizado',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(
                           fontSize: responsive.dp(2.2),
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : Colors.black87,
@@ -250,7 +249,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
                       SizedBox(height: AppTheme.spacingSmall),
                       Text(
                         'Sesión iniciada correctamente.\nRedirigiendo a la aplicación.',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(
                           fontSize: responsive.dp(1.6),
                           color: isDark ? Colors.white70 : Colors.black54,
                         ),
@@ -294,7 +293,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
               ),
               child: Text(
                 authState.errorMessage!,
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   color: AppTheme.errorColorLight,
                   fontSize: responsive.dp(1.6),
                   fontWeight: FontWeight.w500,
@@ -317,7 +316,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
               ),
               child: Text(
                 loginForm.errorMessage!,
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   color: AppTheme.errorColorLight,
                   fontSize: responsive.dp(1.6),
                   fontWeight: FontWeight.w500,
@@ -326,12 +325,12 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
             ),
 
           CustomInputField(
-            label: 'Nombre de usuario',
-            prefixIcon: Icons.person_outline,
-            keyboardType: TextInputType.text,
-            onChanged: ref.read(loginFormProvider.notifier).onUsernameChange,
-            errorMessage: loginForm.isFormPosted && loginForm.username.isEmpty
-                ? 'El nombre de usuario es requerido'
+            label: 'Correo electrónico',
+            prefixIcon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            onChanged: ref.read(loginFormProvider.notifier).onEmailChange,
+            errorMessage: loginForm.isFormPosted && loginForm.email.isEmpty
+                ? 'El correo electrónico es requerido'
                 : null,
             isFormPosted: loginForm.isFormPosted,
           ),
@@ -372,8 +371,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
             onPressed: loginForm.isPosting
                 ? null
                 : () async {
-                    if (loginForm.username.isEmpty ||
-                        loginForm.password.isEmpty) {
+                    if (loginForm.email.isEmpty || loginForm.password.isEmpty) {
                       return;
                     }
 
@@ -390,7 +388,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
               onTap: () => context.push('/register'),
               child: Text(
                 '¿No tienes cuenta? Registrate',
-                style: GoogleFonts.inter(
+                style: TextStyle(
                   color: linkColor,
                   fontSize: responsive.dp(1.6),
                   fontWeight: FontWeight.w500,
