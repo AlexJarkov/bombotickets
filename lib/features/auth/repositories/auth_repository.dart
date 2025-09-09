@@ -18,9 +18,54 @@ class AuthRepository {
         data: {'email': email, 'password': password},
       );
       if (response.statusCode == 200) {
+        // Extract token from body or headers robustly
+        String? token;
+
+        final data = response.data;
+        if (data is Map) {
+          // Direct keys
+          final directToken = data['token'] ?? data['access_token'] ?? data['accessToken'];
+          if (directToken is String && directToken.isNotEmpty) {
+            token = directToken;
+          }
+
+          // Nested under data
+          if (token == null) {
+            final nestedData = data['data'];
+            if (nestedData is Map) {
+              final nestedToken = nestedData['token'] ?? nestedData['access_token'] ?? nestedData['accessToken'];
+              if (nestedToken is String && nestedToken.isNotEmpty) {
+                token = nestedToken;
+              }
+            }
+          }
+
+          // Nested under user
+          if (token == null) {
+            final userMap = data['user'];
+            if (userMap is Map) {
+              final userToken = userMap['token'] ?? userMap['access_token'] ?? userMap['accessToken'];
+              if (userToken is String && userToken.isNotEmpty) {
+                token = userToken;
+              }
+            }
+          }
+        }
+
+        // Check Authorization header
+        if (token == null) {
+          final authHeader = response.headers.value('authorization') ?? response.headers.value('Authorization');
+          if (authHeader != null && authHeader.toLowerCase().startsWith('bearer ')) {
+            token = authHeader.substring(7).trim();
+          }
+        }
+
+        if (token == null || token.isEmpty) {
+          throw Exception('Token de autenticación no recibido del servidor');
+        }
+
         // Store the Bearer token in SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        final token = response.data['token'];
         await prefs.setString('token', token);
 
         return response.data;

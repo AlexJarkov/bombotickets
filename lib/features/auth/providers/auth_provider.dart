@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/auth/entities/user.dart';
 import 'package:bombotickets/features/auth/repositories/auth_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AuthStatus {
   checking,
@@ -43,9 +44,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       log("Login successful: $response");
 
+      // Retrieve stored token to guarantee non-null String
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('Token de autenticación no disponible tras el inicio de sesión');
+      }
+
       final user = User(
-        username: response['email'], // Using email as username for now
-        token: response['token'],
+        username: (response is Map && response['email'] is String && (response['email'] as String).isNotEmpty)
+            ? response['email'] as String
+            : email,
+        token: token,
       );
 
       state = state.copyWith(status: AuthStatus.authenticated, user: user);
