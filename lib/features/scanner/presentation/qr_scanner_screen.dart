@@ -65,6 +65,36 @@ class QrScannerNotifier extends StateNotifier<QrScannerState> {
 
   QrScannerNotifier() : super(QrScannerState());
 
+  Future<void> scanFromText(String qrContent, String method) async {
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      clearResult: true,
+    );
+
+    try {
+      final result = await _repository.readQrFromText(qrContent);
+
+      final newHistory = QrScanHistory(
+        result: result,
+        scanTime: DateTime.now(),
+        method: method,
+      );
+
+      state = state.copyWith(
+        isLoading: false,
+        result: result,
+        history: [newHistory, ...state.history.take(19)],
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+        clearResult: true,
+      );
+    }
+  }
+
   Future<void> scanFromFile(File imageFile, String method) async {
     state = state.copyWith(
       isLoading: true,
@@ -242,11 +272,10 @@ class QrScannerScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: _ScanButton(
-                              icon: Icons.photo_camera_rounded,
+                              icon: Icons.qr_code_scanner_rounded,
                               title: 'Tomar Foto',
-                              subtitle: 'Usar cámara',
-                              onTap: () =>
-                                  _pickImage(context, ref, ImageSource.camera),
+                              subtitle: 'Escáner integrado',
+                              onTap: () => _openLiveScanner(context),
                               isLoading: scannerState.isLoading,
                             ),
                           ),
@@ -333,6 +362,10 @@ class QrScannerScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _openLiveScanner(BuildContext context) {
+    context.push('/scanner/live');
   }
 }
 
@@ -615,7 +648,9 @@ class _HistoryItem extends StatelessWidget {
           Icon(
             item.method == 'camera'
                 ? Icons.photo_camera_rounded
-                : Icons.photo_library_rounded,
+                : item.method == 'scanner'
+                    ? Icons.qr_code_scanner_rounded
+                    : Icons.photo_library_rounded,
             size: res.dp(2),
             color: AppTheme.primaryColor,
           ),
@@ -815,11 +850,10 @@ class QRScannerContent extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _ScanButton(
-                            icon: Icons.photo_camera_rounded,
+                            icon: Icons.qr_code_scanner_rounded,
                             title: 'Tomar Foto',
-                            subtitle: 'Usar cámara',
-                            onTap: () =>
-                                _pickImage(context, ref, ImageSource.camera),
+                            subtitle: 'Escáner integrado',
+                            onTap: () => _openLiveScanner(context),
                             isLoading: scannerState.isLoading,
                           ),
                         ),
@@ -905,5 +939,9 @@ class QRScannerContent extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _openLiveScanner(BuildContext context) {
+    context.push('/scanner/live');
   }
 }

@@ -4,6 +4,7 @@ import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dar
 import 'package:bombotickets/features/auth/otp_verification/presentation/otp_verification_screen.dart';
 import 'package:bombotickets/config/layout/main_layout.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
+import 'package:bombotickets/features/scanner/presentation/qr_live_scanner_screen.dart';
 import 'package:go_router/go_router.dart';
 
 // GoRouter configuration
@@ -60,6 +61,11 @@ final appRouter = GoRouter(
       path: '/scanner',
       name: 'scanner',
       builder: (context, state) => const QrScannerScreen(),
+    ),
+    GoRoute(
+      path: '/scanner/live',
+      name: QrLiveScannerScreen.name,
+      builder: (context, state) => const QrLiveScannerScreen(),
     ),
   ],
 );
