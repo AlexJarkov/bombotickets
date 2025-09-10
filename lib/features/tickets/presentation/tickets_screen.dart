@@ -5,61 +5,21 @@ import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_search_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:motion_toast/motion_toast.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../entities/ticket.dart';
+import '../providers/marketplace_provider.dart';
 
 // Provider para manejar el estado de la pantalla de tickets
 final ticketsTabProvider = StateProvider<int>((ref) => 0);
 
-// Datos de ejemplo para eventos disponibles
-final availableEventsProvider = Provider<List<EventTicket>>(
-  (ref) => [
-    EventTicket(
-      id: 'EVENT-001',
-      title: 'Bombo Fest 2024',
-      artist: 'Various Artists',
-      venue: 'Estadio Nacional',
-      date: DateTime(2024, 12, 15, 20, 0),
-      price: 50000,
-      originalPrice: 60000,
-      imageUrl: 'https://picsum.photos/400/300?random=1',
-      category: 'Música',
-      availableTickets: 15,
-      isResale: false,
-    ),
-    EventTicket(
-      id: 'EVENT-002',
-      title: 'Noche de Stand Up',
-      artist: 'Comediantes Varios',
-      venue: 'Teatro Municipal',
-      date: DateTime(2024, 11, 20, 21, 0),
-      price: 25000,
-      originalPrice: 25000,
-      imageUrl: 'https://picsum.photos/400/300?random=2',
-      category: 'Comedia',
-      availableTickets: 8,
-      isResale: false,
-    ),
-    EventTicket(
-      id: 'EVENT-003',
-      title: 'Festival Electrónico',
-      artist: 'DJ Snake ft. Martin Garrix',
-      venue: 'Club Blondie',
-      date: DateTime(2024, 11, 30, 23, 0),
-      price: 45000,
-      originalPrice: 50000,
-      imageUrl: 'https://picsum.photos/400/300?random=3',
-      category: 'Electrónica',
-      availableTickets: 3,
-      isResale: true,
-    ),
-  ],
-);
+// Los tickets disponibles se cargan desde la API /marketplace
 
 class TicketsScreen extends ConsumerStatefulWidget {
   const TicketsScreen({super.key});
@@ -212,57 +172,158 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
 
   // Tab de compra de tickets
   Widget _buildBuyTab(Responsive res, ThemeData theme) {
-    final availableEvents = ref.watch(availableEventsProvider);
+    final availableEventsAsync = ref.watch(marketplaceTicketsProvider);
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= 1000;
     final crossAxisCount = isWide ? 2 : 1;
+    // Compute a deterministic tile height so titles can wrap to 2 lines
+    final double outerHPad = res.wp(4) * 2; // matches outer SingleChildScrollView padding
+    final double gridWidth = (width - outerHPad).clamp(200.0, width);
+    final double tileWidth = crossAxisCount == 1
+        ? gridWidth
+        : ((gridWidth - AppTheme.spacingNormal) / crossAxisCount);
+    final double imageHeight = tileWidth * 9 / 16; // 16:9 image
+    const double contentHeightAllowance = 240; // title(2l) + rows + CTA + paddings
+    final double mainTileExtent = imageHeight + contentHeightAllowance;
+
+    return availableEventsAsync.when(
+      loading: () => _buildLoadingBuyTab(res, theme, crossAxisCount, isWide),
+      error: (err, stack) => _buildErrorBuyTab(res, theme, err),
+      data: (availableEvents) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(res.wp(4)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Barra de búsqueda y filtros para compras
+              Row(
+                children: [
+                  Expanded(
+                    child: (() {
+                          final w = GlassSearchBar(
+                              controller: _searchController,
+                              hintText: 'Buscar eventos, artistas...',
+                              iconSize: res.dp(2.2),
+                              onChanged: (value) {
+                                // TODO: Implementar búsqueda local/servidor
+                              },
+                            );
+                          if (MediaQuery.of(context).disableAnimations) return w;
+                          return w
+                              .animate()
+                              .slideX(duration: 280.ms, begin: 0.14, end: 0)
+                              .fadeIn(duration: 280.ms);
+                        })(),
+                  ),
+
+                  SizedBox(width: AppTheme.spacingSmall),
+
+                  GlassCard(
+                    padding: EdgeInsets.all(AppTheme.spacingSmall),
+                    borderRadius: AppTheme.borderRadiusSmall,
+                    child: InkWell(
+                      onTap: () => _showFilterBottomSheet(context),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusSmall,
+                      ),
+                      child: Icon(
+                        Icons.tune_rounded,
+                        color: AppTheme.primaryColor,
+                        size: res.dp(2.4),
+                      ),
+                    ),
+                  ).animate(target: MediaQuery.of(context).disableAnimations ? 1 : 1).scale(duration: MediaQuery.of(context).disableAnimations ? 1.ms : 240.ms, delay: MediaQuery.of(context).disableAnimations ? 0.ms : 120.ms),
+                ],
+              ),
+
+              SizedBox(height: res.hp(2)),
+              Text(
+                'Eventos Disponibles',
+                style: TextStyle(
+                  fontSize: res.dp(2.2),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              SizedBox(height: res.hp(1.5)),
+
+              if (availableEvents.isEmpty)
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: res.hp(10)),
+                  child: Center(
+                    child: Text(
+                      'No hay tickets disponibles en este momento',
+                      style: TextStyle(
+                        fontSize: res.dp(1.6),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: AppTheme.spacingNormal,
+                    mainAxisSpacing: AppTheme.spacingNormal,
+                    // Fix tile height to accommodate 2-line titles without overflow
+                    mainAxisExtent: mainTileExtent,
+                  ),
+                  itemCount: availableEvents.length,
+                  itemBuilder: (context, index) =>
+                      _buildMarketplaceEventCard(availableEvents[index], res, theme),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingBuyTab(
+    Responsive res,
+    ThemeData theme,
+    int crossAxisCount,
+    bool isWide,
+  ) {
+    final width = MediaQuery.of(context).size.width;
+    final double outerHPad = res.wp(4) * 2;
+    final double gridWidth = (width - outerHPad).clamp(200.0, width);
+    final double tileWidth = crossAxisCount == 1
+        ? gridWidth
+        : ((gridWidth - AppTheme.spacingNormal) / crossAxisCount);
+    final double imageHeight = tileWidth * 9 / 16;
+    const double contentHeightAllowance = 240;
+    final double mainTileExtent = imageHeight + contentHeightAllowance;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(res.wp(4)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Barra de búsqueda y filtros para compras
           Row(
             children: [
               Expanded(
-                child: (() {
-                      final w = GlassSearchBar(
-                          controller: _searchController,
-                          hintText: 'Buscar eventos, artistas...',
-                          iconSize: res.dp(2.2),
-                          onChanged: (value) {
-                            // TODO: Implementar búsqueda
-                          },
-                        );
-                      if (MediaQuery.of(context).disableAnimations) return w;
-                      return w
-                          .animate()
-                          .slideX(duration: 280.ms, begin: 0.14, end: 0)
-                          .fadeIn(duration: 280.ms);
-                    })(),
-              ),
-
-              SizedBox(width: AppTheme.spacingSmall),
-
-              GlassCard(
-                padding: EdgeInsets.all(AppTheme.spacingSmall),
-                borderRadius: AppTheme.borderRadiusSmall,
-                child: InkWell(
-                  onTap: () => _showFilterBottomSheet(context),
-                  borderRadius: BorderRadius.circular(
-                    AppTheme.borderRadiusSmall,
+                child: GlassCard(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingNormal,
+                    vertical: AppTheme.spacingSmall,
                   ),
-                  child: Icon(
-                    Icons.tune_rounded,
-                    color: AppTheme.primaryColor,
-                    size: res.dp(2.4),
+                  child: Container(
+                    height: res.hp(5),
+                    color: Colors.transparent,
                   ),
                 ),
-              ).animate(target: MediaQuery.of(context).disableAnimations ? 1 : 1).scale(duration: MediaQuery.of(context).disableAnimations ? 1.ms : 240.ms, delay: MediaQuery.of(context).disableAnimations ? 0.ms : 120.ms),
-          ],
-        ),
-
+              ),
+              SizedBox(width: AppTheme.spacingSmall),
+              GlassCard(
+                padding: EdgeInsets.all(AppTheme.spacingSmall),
+                child: Icon(Icons.tune_rounded, color: AppTheme.primaryColor),
+              ),
+            ],
+          ),
           SizedBox(height: res.hp(2)),
           Text(
             'Eventos Disponibles',
@@ -271,10 +332,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
               fontWeight: FontWeight.bold,
             ),
           ),
-
           SizedBox(height: res.hp(1.5)),
-
-          // Lista de eventos (grid responsiva)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -282,11 +340,84 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: AppTheme.spacingNormal,
               mainAxisSpacing: AppTheme.spacingNormal,
-              childAspectRatio: isWide ? 1.8 : 1.0,
+              // Match the real card height during loading, too
+              mainAxisExtent: mainTileExtent,
             ),
-            itemCount: availableEvents.length,
-            itemBuilder: (context, index) =>
-                _buildEventCard(availableEvents[index], res, theme),
+            itemCount: 4,
+            itemBuilder: (context, index) => GlassCard(
+              padding: EdgeInsets.all(AppTheme.spacingNormal),
+              child: Row(
+                children: [
+                  Container(
+                    width: res.wp(25),
+                    height: res.wp(25),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+                    ),
+                  ),
+                  SizedBox(width: AppTheme.spacingNormal),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: res.hp(2),
+                          color: theme.colorScheme.surfaceVariant,
+                        ),
+                        SizedBox(height: AppTheme.spacingSmall),
+                        Container(
+                          height: res.hp(2),
+                          width: res.wp(30),
+                          color: theme.colorScheme.surfaceVariant,
+                        ),
+                        SizedBox(height: AppTheme.spacingSmall),
+                        Container(
+                          height: res.hp(2),
+                          width: res.wp(20),
+                          color: theme.colorScheme.surfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBuyTab(Responsive res, ThemeData theme, Object err) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(res.wp(4)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(height: res.hp(10)),
+          Icon(Icons.error_outline, color: theme.colorScheme.error, size: res.dp(6)),
+          SizedBox(height: res.hp(2)),
+          Text(
+            'No se pudieron cargar los tickets',
+            style: TextStyle(
+              fontSize: res.dp(1.8),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: res.hp(1)),
+          Text(
+            err.toString(),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          SizedBox(height: res.hp(2)),
+          ElevatedButton.icon(
+            onPressed: () => ref.refresh(marketplaceTicketsProvider),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
           ),
         ],
       ),
@@ -340,8 +471,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () =>
-                        _showSellTicketBottomSheet(context, res, theme),
+                    onPressed: () => context.push('/tickets/sell/scan'),
                     icon: const Icon(Icons.add),
                     label: const Text('Publicar Ticket'),
                     style: ElevatedButton.styleFrom(
@@ -404,27 +534,47 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Imagen del evento con placeholder moderno
+              // Imagen del evento (usa red de imágenes si está disponible)
               Container(
                 width: res.wp(25),
                 height: res.wp(25),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(
-                    AppTheme.borderRadiusSmall,
-                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.event_rounded,
-                  size: res.dp(4),
-                  color: Colors.white,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+                  child: CachedNetworkImage(
+                    imageUrl: event.imageUrl,
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 200),
+                    placeholder: (context, url) => Container(
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                      ),
+                      child: Icon(
+                        Icons.event_rounded,
+                        size: res.dp(4),
+                        color: Colors.white,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                      ),
+                      child: Icon(
+                        Icons.event_rounded,
+                        size: res.dp(4),
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
@@ -613,6 +763,220 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  // New compact marketplace card with full-width image on top
+  Widget _buildMarketplaceEventCard(
+    EventTicket event,
+    Responsive res,
+    ThemeData theme,
+  ) {
+    return GlassCard(
+      margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+      padding: EdgeInsets.zero,
+      borderRadius: AppTheme.borderRadiusSmall,
+      animated: true,
+      animationDuration: const Duration(milliseconds: 400),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Image spans horizontally across the card
+          ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(AppTheme.borderRadiusSmall),
+              topRight: Radius.circular(AppTheme.borderRadiusSmall),
+            ),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: CachedNetworkImage(
+                imageUrl: event.imageUrl,
+                fit: BoxFit.cover,
+                fadeInDuration: const Duration(milliseconds: 200),
+                placeholder: (context, url) => Container(
+                  decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
+                  child: Icon(Icons.event_rounded, size: res.dp(4), color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
+                  child: Icon(Icons.event_rounded, size: res.dp(4), color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+
+          // Compressed content
+          Padding(
+            padding: EdgeInsets.all(AppTheme.spacingNormal),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: AutoSizeText(
+                        event.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: AppTheme.fontSizeBodyLarge,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (event.isResale) ...[
+                      SizedBox(width: AppTheme.spacingSmall),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingSmall,
+                          vertical: AppTheme.spacingSmall / 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+                        ),
+                        child: Text(
+                          'REVENTA',
+                          style: GoogleFonts.inter(
+                            fontSize: AppTheme.fontSizeBodyNormal,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                SizedBox(height: AppTheme.spacingSmall / 1.5),
+
+                if (event.artist.isNotEmpty)
+                  Text(
+                    event.artist,
+                    style: GoogleFonts.inter(
+                      fontSize: AppTheme.fontSizeBodyNormal,
+                      color: AppTheme.grey1,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                SizedBox(height: AppTheme.spacingSmall / 1.5),
+
+                Row(
+                  children: [
+                    Icon(Icons.location_on_rounded, size: res.dp(1.6), color: AppTheme.grey1),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        event.venue,
+                        style: GoogleFonts.inter(
+                          fontSize: AppTheme.fontSizeBodyNormal,
+                          color: AppTheme.grey1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.calendar_today_rounded, size: res.dp(1.6), color: AppTheme.grey1),
+                    SizedBox(width: 4),
+                    Text(
+                      '${event.date.day}/${event.date.month}/${event.date.year}',
+                      style: GoogleFonts.inter(
+                        fontSize: AppTheme.fontSizeBodyNormal,
+                        color: AppTheme.grey1,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: AppTheme.spacingSmall),
+
+                Row(
+                  children: [
+                    if (event.hasDiscount) ...[
+                      Text(
+                        '\$${event.originalPrice.toString().replaceAllMapped(RegExp(r'(\\d)(?=(\\d{3})+(?!\\d))'), (m) => '${m[1]}.')}',
+                        style: GoogleFonts.inter(
+                          fontSize: AppTheme.fontSizeBodyNormal,
+                          decoration: TextDecoration.lineThrough,
+                          color: AppTheme.grey1,
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                    ],
+                    Text(
+                      '\$${event.price.toString().replaceAllMapped(RegExp(r'(\\d)(?=(\\d{3})+(?!\\d))'), (m) => '${m[1]}.')}',
+                      style: GoogleFonts.poppins(
+                        fontSize: AppTheme.fontSizeBodyLarge,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: () => _showBuyConfirmation(event, res, theme),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingMedium,
+                          vertical: AppTheme.spacingSmall,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+                        ),
+                      ),
+                      child: Text(
+                        'Comprar',
+                        style: GoogleFonts.inter(
+                          fontSize: AppTheme.fontSizeBodyNormal,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                if (event.availableTickets <= 5) ...[
+                  SizedBox(height: AppTheme.spacingSmall),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: res.wp(3),
+                      vertical: res.hp(0.5),
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(res.wp(1)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_outlined, size: res.dp(1.6), color: Colors.red),
+                        SizedBox(width: res.wp(1)),
+                        Text(
+                          'Solo quedan ${event.availableTickets} tickets',
+                          style: TextStyle(
+                            fontSize: res.dp(1.2),
+                            color: Colors.red,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

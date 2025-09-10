@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,13 +15,18 @@ import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dar
 class QrLiveScannerScreen extends ConsumerStatefulWidget {
   static String name = 'qr-scanner-live';
 
-  const QrLiveScannerScreen({super.key});
+  // When true, this screen will pop with the raw scanned value
+  // instead of sending it to the qrScannerProvider.
+  final bool popWithResult;
+
+  const QrLiveScannerScreen({super.key, this.popWithResult = false});
 
   @override
   ConsumerState<QrLiveScannerScreen> createState() => _QrLiveScannerScreenState();
 }
 
-class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen> {
+class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen>
+    with WidgetsBindingObserver {
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.unrestricted,
     facing: CameraFacing.back,
@@ -29,24 +35,41 @@ class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen> {
   );
 
   bool _processing = false;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    // Ensure camera starts
-    _controller.start();
-    // Slight zoom helps recognition at a small distance
+    WidgetsBinding.instance.addObserver(this);
+    // Start the controller after first frame to ensure platform view is attached (fixes debug crash).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        await _controller.setZoomScale(1.2);
-      } catch (_) {}
+        await _controller.start();
+        if (mounted) setState(() => _initialized = true);
+        // Ensure neutral optical zoom: 0.0 means no zoom (min), 1.0 is max.
+        try { await _controller.setZoomScale(0.0); } catch (_) {}
+      } catch (_) {
+        // Ignore; MobileScanner may auto-start. Buttons remain disabled until first detection.
+      }
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // On resume, some devices reset zoom; enforce neutral zoom again.
+      // Ignore errors if controller not ready.
+      Future.microtask(() async {
+        try { await _controller.setZoomScale(0.0); } catch (_) {}
+      });
+    }
   }
 
   @override
@@ -58,7 +81,7 @@ class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
-          final cutOutSize = size.width * 0.7;
+          final cutOutSize = math.min(size.width, size.height) * 0.7;
           final cutOutTop = (size.height - cutOutSize) / 2;
           final cutOutLeft = (size.width - cutOutSize) / 2;
           final cutOutRect =
@@ -70,6 +93,7 @@ class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen> {
               // Camera preview
               MobileScanner(
                 controller: _controller,
+                // Fill the screen while keeping neutral optical zoom (1.0x)
                 fit: BoxFit.cover,
                 // Only analyze barcodes within the square cutout
                 scanWindow: cutOutRect,
@@ -108,11 +132,15 @@ class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen> {
                   await _controller.stop();
 
                   try {
-                    await ref
-                        .read(qrScannerProvider.notifier)
-                        .scanFromText(value, 'scanner');
+                    if (widget.popWithResult) {
+                      if (mounted) context.pop(value);
+                    } else {
+                      await ref
+                          .read(qrScannerProvider.notifier)
+                          .scanFromText(value, 'scanner');
 
-                    if (mounted) context.pop();
+                      if (mounted) context.pop();
+                    }
                   } catch (e) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -143,8 +171,16 @@ class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen> {
                   processing: _processing,
                   onBack: () => context.pop(),
                   onToggleTorch: () async {
-                    await _controller.toggleTorch();
-                    setState(() {});
+                    if (!_initialized) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Inicializando cámara…')),
+                      );
+                      return;
+                    }
+                    try {
+                      await _controller.toggleTorch();
+                      if (mounted) setState(() {});
+                    } catch (_) {}
                   },
                 ),
               ),

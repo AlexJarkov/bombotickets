@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -446,6 +447,11 @@ class _ResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    Map<String, dynamic>? parsed;
+    try {
+      final d = jsonDecode(result);
+      if (d is Map<String, dynamic>) parsed = d;
+    } catch (_) {}
 
     return AppCard(
       padding: EdgeInsets.all(AppTheme.spacingLarge),
@@ -471,30 +477,33 @@ class _ResultCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: AppTheme.spacingMedium),
-          Container(
-            width: double.infinity,
-            constraints: BoxConstraints(
-              minHeight: res.dp(12),
-              maxHeight: res.dp(25),
-            ),
-            padding: EdgeInsets.all(AppTheme.spacingMedium),
-            decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
-              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-            ),
-            child: SingleChildScrollView(
-              child: SelectableText(
-                result,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: res.dp(1.3),
-                  color: isDark ? Colors.white : Colors.black87,
-                  height: 1.4,
+          if (parsed != null)
+            _PrettyTicketInfo(parsed: parsed!)
+          else
+            Container(
+              width: double.infinity,
+              constraints: BoxConstraints(
+                minHeight: res.dp(12),
+                maxHeight: res.dp(25),
+              ),
+              padding: EdgeInsets.all(AppTheme.spacingMedium),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+              ),
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  result,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: res.dp(1.3),
+                    color: isDark ? Colors.white : Colors.black87,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ),
-          ),
           SizedBox(height: AppTheme.spacingMedium),
           SizedBox(
             width: double.infinity,
@@ -527,6 +536,107 @@ class _ResultCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _PrettyTicketInfo extends StatelessWidget {
+  final Map<String, dynamic> parsed;
+  const _PrettyTicketInfo({required this.parsed});
+
+  @override
+  Widget build(BuildContext context) {
+    final res = Responsive.of(context);
+    String? pickStr(List<String> keys) {
+      for (final k in keys) {
+        final v = parsed[k];
+        if (v is String && v.trim().isNotEmpty) return v.trim();
+      }
+      return null;
+    }
+
+    num? pickNum(List<String> keys) {
+      for (final k in keys) {
+        final v = parsed[k];
+        if (v is num) return v;
+        if (v is String) {
+          final n = num.tryParse(v.replaceAll(RegExp(r'[^0-9.,-]'), '').replaceAll(',', '.'));
+          if (n != null) return n;
+        }
+      }
+      return null;
+    }
+
+    DateTime? pickDate(List<String> keys) {
+      for (final k in keys) {
+        final v = parsed[k];
+        if (v is String) {
+          final d = DateTime.tryParse(v);
+          if (d != null) return d;
+        }
+        if (v is int) {
+          return DateTime.fromMillisecondsSinceEpoch(v > 1e12 ? v : v * 1000);
+        }
+      }
+      return null;
+    }
+
+    final title = pickStr(['title', 'event', 'eventName', 'name', 'evento']);
+    final venue = pickStr(['venue', 'location', 'place', 'stadium', 'recinto']);
+    final category = pickStr(['category', 'tier', 'type', 'zona', 'sector']);
+    final seat = pickStr(['seat', 'asiento', 'butaca', 'localidad']);
+    final price = pickNum(['price', 'original_price', 'precio', 'valor', 'amount']);
+    final date = pickDate(['date', 'fecha', 'eventDate', 'datetime']);
+
+    final rows = <Widget>[];
+    void add(String label, String? value) {
+      if (value == null || value.isEmpty) return;
+      rows.add(Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            SizedBox(width: 120, child: Text(label, style: TextStyle(fontWeight: FontWeight.w600))),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      ));
+    }
+
+    add('Evento', title);
+    if (date != null) {
+      add('Fecha', _fmtDate(date));
+    }
+    add('Lugar', venue);
+    add('Categoría', category);
+    add('Asiento', seat);
+    if (price != null) add('Precio', '\$${_fmtPrice(price)}');
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(AppTheme.spacingMedium),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: rows.isEmpty ? [
+        Text('Datos del ticket recibidos', style: TextStyle(fontWeight: FontWeight.w600, fontSize: res.dp(1.5))),
+        const SizedBox(height: 6),
+        Text('No se pudieron identificar campos comunes, mostrando JSON crudo.'),
+        const SizedBox(height: 8),
+        SelectableText(parsed.toString(), style: TextStyle(fontFamily: 'monospace', fontSize: res.dp(1.2))),
+      ] : rows),
+    );
+  }
+
+  static String _fmtPrice(num v) {
+    final s = v.toStringAsFixed(0);
+    return s.replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+  }
+
+  static String _fmtDate(DateTime d) {
+    final months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    final dd = d.day.toString().padLeft(2, '0');
+    return '$dd ${months[d.month-1]} ${d.year}';
   }
 }
 

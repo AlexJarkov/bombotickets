@@ -6,6 +6,7 @@ import 'package:bombotickets/config/layout/main_layout.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_live_scanner_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'package:bombotickets/features/tickets/presentation/sell_screen.dart';
 
 // GoRouter configuration
 final appRouter = GoRouter(
@@ -66,6 +67,31 @@ final appRouter = GoRouter(
       path: '/scanner/live',
       name: QrLiveScannerScreen.name,
       builder: (context, state) => const QrLiveScannerScreen(),
+    ),
+    GoRoute(
+      path: '/scanner/live-result',
+      name: 'qr-scanner-live-result',
+      builder: (context, state) => const QrLiveScannerScreen(popWithResult: true),
+    ),
+
+    // Selling flow
+    GoRoute(
+      path: '/tickets/sell/scan',
+      name: 'sell-ticket-scan',
+      builder: (context, state) => const SellTicketScanScreen(),
+    ),
+    GoRoute(
+      path: '/tickets/sell/details',
+      name: 'sell-ticket-details',
+      builder: (context, state) {
+        final extra = state.extra;
+        String? qr;
+        if (extra is Map && extra['qr'] is String) {
+          qr = extra['qr'] as String;
+        }
+        qr ??= state.uri.queryParameters['qr'];
+        return SellTicketDetailsScreen(ticketQr: qr ?? '');
+      },
     ),
   ],
 );
