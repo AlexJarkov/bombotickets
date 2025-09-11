@@ -10,11 +10,12 @@ import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/app_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+// import 'package:flutter_animate/flutter_animate.dart'; // not used here
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pull_to_refresh_flutter3/pull_to_refresh_flutter3.dart';
 
 class ProfileScreen extends ConsumerWidget {
   static String name = 'profile';
@@ -29,11 +30,23 @@ class ProfileScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final bool reduce = settings.reduceMotion;
 
+    // Fetch remote profile once when we have an authenticated email and no local email yet
+    final authEmail = authState.user?.username ?? '';
+    if (authEmail.isNotEmpty && profile.email.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(profileProvider.notifier).fetchRemoteProfile(authEmail);
+      });
+    }
+
     final displayName =
         (profile.fullName.isNotEmpty
                 ? profile.fullName
-                : (authState.user?.username ?? 'Usuario'))
+                : authEmail.isNotEmpty
+                ? authEmail
+                : 'Usuario')
             .trim();
+
+    final refreshController = RefreshController(initialRefresh: false);
 
     return AnimatedBackground(
       style: BackgroundStyle.surface,
@@ -42,312 +55,298 @@ class ProfileScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.all(AppTheme.spacingMedium),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: AppTheme.spacingLarge),
+          child: SmartRefresher(
+            controller: refreshController,
+            enablePullDown: true,
+            header: const WaterDropHeader(),
+            onRefresh: () async {
+              try {
+                final email = authEmail;
+                if (email.isNotEmpty) {
+                  await ref
+                      .read(profileProvider.notifier)
+                      .fetchRemoteProfile(email);
+                }
+                refreshController.refreshCompleted();
+              } catch (_) {
+                refreshController.refreshFailed();
+              }
+            },
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: EdgeInsets.all(AppTheme.spacingMedium),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: AppTheme.spacingLarge),
 
-                  // Perfil card con estilo App/Glass
-                  AppCard(
-                    padding: EdgeInsets.all(AppTheme.spacingMedium),
-                    child: Column(
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
+                    // Perfil card con estilo App/Glass
+                    AppCard(
+                      padding: EdgeInsets.all(AppTheme.spacingMedium),
+                      child: Column(
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
                             CircleAvatar(
                               radius: res.wp(12),
-                              backgroundColor: AppTheme.primaryColor
-                                  .withOpacity(0.12),
-                              backgroundImage:
-                                  profile.photoPath != null &&
-                                      profile.photoPath!.isNotEmpty &&
-                                      File(profile.photoPath!).existsSync()
-                                  ? FileImage(File(profile.photoPath!))
-                                  : null,
-                              child:
-                                  (profile.photoPath == null ||
-                                      profile.photoPath!.isEmpty ||
-                                      !File(profile.photoPath!).existsSync())
-                                  ? Icon(
+                              backgroundColor:
+                                  AppTheme.primaryColor.withOpacity(0.12),
+                              backgroundImage: () {
+                                final path = profile.photoPath;
+                                if (path == null || path.isEmpty) return null;
+                                if (path.startsWith('http')) {
+                                  return NetworkImage(path);
+                                }
+                                final file = File(path);
+                                if (file.existsSync()) {
+                                  return FileImage(file);
+                                }
+                                return null;
+                              }() as ImageProvider<Object>?,
+                              child: () {
+                                final path = profile.photoPath;
+                                if (path == null || path.isEmpty) {
+                                  return Icon(
+                                    Icons.person_rounded,
+                                    size: res.dp(6),
+                                    color: AppTheme.primaryColor,
+                                  );
+                                }
+                                if (!path.startsWith('http')) {
+                                  final file = File(path);
+                                  if (!file.existsSync()) {
+                                    return Icon(
                                       Icons.person_rounded,
                                       size: res.dp(6),
                                       color: AppTheme.primaryColor,
-                                    )
-                                  : null,
+                                    );
+                                  }
+                                }
+                                return null;
+                              }(),
                             ),
-                          ],
-                        ),
-                        SizedBox(height: AppTheme.spacingMedium),
-                        AutoSizeText(
-                          displayName,
-                          style: GoogleFonts.poppins(
-                            fontSize: AppTheme.fontSizeH3 - 2,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          minFontSize: 14,
-                        ),
-                        if (profile.email.isNotEmpty) ...[
-                          SizedBox(height: AppTheme.spacingSmall / 2),
+                          SizedBox(height: AppTheme.spacingMedium),
                           AutoSizeText(
-                            profile.email,
-                            style: GoogleFonts.inter(
-                              fontSize: AppTheme.fontSizeBodyNormal - 1,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withOpacity(0.7),
+                            displayName,
+                            style: GoogleFonts.poppins(
+                              fontSize: AppTheme.fontSizeH3 - 2,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            minFontSize: 12,
+                            minFontSize: 14,
                           ),
-                        ],
-                        SizedBox(height: AppTheme.spacingMedium),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () =>
-                                _showEditProfileSheet(context, ref),
-                            icon: const Icon(Icons.edit),
-                            label: const Text('Editar Perfil'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                vertical: AppTheme.spacingNormal,
+                          if (profile.email.isNotEmpty) ...[
+                            SizedBox(height: AppTheme.spacingSmall / 2),
+                            AutoSizeText(
+                              profile.email,
+                              style: GoogleFonts.inter(
+                                fontSize: AppTheme.fontSizeBodyNormal - 1,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.borderRadiusSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              minFontSize: 12,
+                            ),
+                          ],
+                          SizedBox(height: AppTheme.spacingMedium),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _showEditProfileSheet(context, ref),
+                              icon: const Icon(Icons.edit),
+                              label: const Text('Editar Perfil'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: AppTheme.spacingNormal,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.borderRadiusSmall,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: AppTheme.spacingLarge),
-
-                  // Datos del usuario
-                  AppCard(
-                    padding: EdgeInsets.all(AppTheme.spacingMedium),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _sectionTitle(context, 'Mis Datos'),
-                        SizedBox(height: AppTheme.spacingNormal),
-                        _dataRow(
-                          context,
-                          'Nombre Completo',
-                          profile.fullName.isNotEmpty ? profile.fullName : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Apellidos',
-                          profile.lastName.isNotEmpty ? profile.lastName : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Email',
-                          profile.email.isNotEmpty ? profile.email : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Número de Celular',
-                          profile.phoneNumber.isNotEmpty
-                              ? profile.phoneNumber
-                              : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Carnet/NIT',
-                          profile.idNumber.isNotEmpty ? profile.idNumber : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Dirección',
-                          profile.address?.isNotEmpty == true
-                              ? profile.address!
-                              : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Número de Cuenta',
-                          profile.accountNumber.isNotEmpty
-                              ? profile.accountNumber
-                              : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Nombre del banco',
-                          profile.bankName.isNotEmpty ? profile.bankName : '—',
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: AppTheme.spacingLarge),
-
-                  // Tema de la app + accesibilidad
-                  AppCard(
-                    padding: EdgeInsets.all(AppTheme.spacingMedium),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _sectionTitle(context, 'Tema de la app'),
-                        const SizedBox(height: 8),
-                        RadioListTile<ThemeMode>(
-                          title: const Text('Automático'),
-                          subtitle: const Text('Usa el tema del dispositivo'),
-                          value: ThemeMode.system,
-                          groupValue: settings.themeMode,
-                          onChanged: (m) => ref
-                              .read(settingsProvider.notifier)
-                              .setThemeMode(m!),
-                          dense: true,
-                        ),
-                        RadioListTile<ThemeMode>(
-                          title: const Text('Claro'),
-                          value: ThemeMode.light,
-                          groupValue: settings.themeMode,
-                          onChanged: (m) => ref
-                              .read(settingsProvider.notifier)
-                              .setThemeMode(m!),
-                          dense: true,
-                        ),
-                        RadioListTile<ThemeMode>(
-                          title: const Text('Oscuro'),
-                          value: ThemeMode.dark,
-                          groupValue: settings.themeMode,
-                          onChanged: (m) => ref
-                              .read(settingsProvider.notifier)
-                              .setThemeMode(m!),
-                          dense: true,
-                        ),
-                        const Divider(height: 24),
-                        _sectionTitle(context, 'Accesibilidad'),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Reducir animaciones'),
-                          subtitle: const Text(
-                            'Oculta transiciones y efectos para mayor fluidez',
-                          ),
-                          value: reduce,
-                          onChanged: (v) => ref
-                              .read(settingsProvider.notifier)
-                              .setReduceMotion(v),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: AppTheme.spacingLarge),
-
-                  // Acciones: Ayuda, Acerca y Cerrar sesión
-                  InfoGlassCard(
-                    leading: const Icon(Icons.help_outline_rounded),
-                    title: 'Ayuda',
-                    subtitle: 'Centro de soporte',
-                    onTap: () {},
-                    accentColor: AppTheme.secondaryColor,
-                  ),
-                  const SizedBox(height: 12),
-                  InfoGlassCard(
-                    leading: const Icon(Icons.info_outline_rounded),
-                    title: 'Acerca de',
-                    subtitle: 'Versión y créditos',
-                    onTap: () {},
-                    accentColor: AppTheme.warningColor,
-                  ),
-
-                  SizedBox(height: AppTheme.spacingLarge),
-
-                  // Logout
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(
-                        AppTheme.borderRadiusLarge,
+                        ],
                       ),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          final shouldLogout = await _showLogoutDialog(context);
-                          if (shouldLogout == true) {
-                            ref.read(authProvider.notifier).logout();
-                            if (context.mounted) context.go('/');
+
+                    SizedBox(height: AppTheme.spacingLarge),
+
+                    // Datos del usuario
+                    AppCard(
+                      padding: EdgeInsets.all(AppTheme.spacingMedium),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle(context, 'Mis Datos'),
+                          SizedBox(height: AppTheme.spacingNormal),
+                          _dataRow(
+                            context,
+                            'Nombre Completo',
+                            profile.fullName.isNotEmpty
+                                ? profile.fullName
+                                : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Apellidos',
+                            profile.lastName.isNotEmpty
+                                ? profile.lastName
+                                : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Email',
+                            profile.email.isNotEmpty ? profile.email : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Número de Celular',
+                            profile.phoneNumber.isNotEmpty
+                                ? profile.phoneNumber
+                                : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Carnet/NIT',
+                            profile.idNumber.isNotEmpty
+                                ? profile.idNumber
+                                : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Dirección',
+                            profile.address?.isNotEmpty == true
+                                ? profile.address!
+                                : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Número de Cuenta',
+                            profile.accountNumber.isNotEmpty
+                                ? profile.accountNumber
+                                : '—',
+                          ),
+                          _dataRow(
+                            context,
+                            'Nombre del banco',
+                            profile.bankName.isNotEmpty
+                                ? profile.bankName
+                                : '—',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: AppTheme.spacingLarge),
+
+                    // Tema de la app + accesibilidad
+                    AppCard(
+                      padding: EdgeInsets.all(AppTheme.spacingMedium),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle(context, 'Tema de la app'),
+                          const SizedBox(height: 8),
+                          RadioListTile<ThemeMode>(
+                            title: const Text('Automático'),
+                            subtitle: const Text('Usa el tema del dispositivo'),
+                            value: ThemeMode.system,
+                            groupValue: settings.themeMode,
+                            onChanged: (m) => ref
+                                .read(settingsProvider.notifier)
+                                .setThemeMode(m!),
+                            dense: true,
+                          ),
+                          RadioListTile<ThemeMode>(
+                            title: const Text('Claro'),
+                            value: ThemeMode.light,
+                            groupValue: settings.themeMode,
+                            onChanged: (m) => ref
+                                .read(settingsProvider.notifier)
+                                .setThemeMode(m!),
+                            dense: true,
+                          ),
+                          RadioListTile<ThemeMode>(
+                            title: const Text('Oscuro'),
+                            value: ThemeMode.dark,
+                            groupValue: settings.themeMode,
+                            onChanged: (m) => ref
+                                .read(settingsProvider.notifier)
+                                .setThemeMode(m!),
+                            dense: true,
+                          ),
+                          const Divider(height: 24),
+                          _sectionTitle(context, 'Accesibilidad'),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Reducir animaciones'),
+                            subtitle: const Text(
+                              'Oculta transiciones y efectos para mayor fluidez',
+                            ),
+                            value: reduce,
+                            onChanged: (v) => ref
+                                .read(settingsProvider.notifier)
+                                .setReduceMotion(v),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: AppTheme.spacingLarge),
+
+                    // Acciones: Ayuda, Acerca y Cerrar sesión
+                    InfoGlassCard(
+                      leading: const Icon(Icons.help_outline_rounded),
+                      title: 'Ayuda',
+                      subtitle: 'Centro de soporte',
+                      onTap: () {},
+                      accentColor: AppTheme.secondaryColor,
+                    ),
+                    const SizedBox(height: 12),
+                    InfoGlassCard(
+                      leading: const Icon(Icons.info_outline_rounded),
+                      title: 'Acerca de',
+                      subtitle: 'Versión y créditos',
+                      onTap: () {},
+                      accentColor: AppTheme.warningColor,
+                    ),
+
+                    SizedBox(height: AppTheme.spacingLarge),
+
+                    // Logout Button Simple
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.logout_rounded,
+                      title: 'Cerrar Sesión',
+                      onTap: () async {
+                        final shouldLogout = await _showLogoutDialog(context);
+                        if (shouldLogout == true) {
+                          await ref.read(authProvider.notifier).logout();
+                          if (context.mounted) {
+                            context.go('/splash');
                           }
-                        },
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.borderRadiusLarge,
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(AppTheme.spacingNormal),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.logout_rounded,
-                                color: Colors.red,
-                                size: res.dp(2.5),
-                              ),
-                              SizedBox(width: AppTheme.spacingMedium),
-                              Expanded(
-                                child: AutoSizeText(
-                                  'Cerrar Sesión',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: AppTheme.fontSizeBodyLarge,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.red,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                              ),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.red.withOpacity(0.6),
-                                size: res.dp(2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1),
-
-                  SizedBox(height: AppTheme.spacingLarge),
-
-                  // Logout Button Simple
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.logout_rounded,
-                    title: 'Cerrar Sesión',
-                    onTap: () async {
-                      final shouldLogout = await _showLogoutDialog(context);
-                      if (shouldLogout == true) {
-                        await ref.read(authProvider.notifier).logout();
-                        if (context.mounted) {
-                          context.go('/splash');
                         }
-                      }
-                    },
-                    res: res,
-                    isLogout: true,
-                  ),
+                      },
+                      res: res,
+                      isLogout: true,
+                    ),
 
-                  SizedBox(height: AppTheme.spacingLarge),
-                ],
+                    SizedBox(height: AppTheme.spacingLarge),
+                  ],
+                ),
               ),
             ),
           ),
