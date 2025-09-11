@@ -385,7 +385,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           final shouldLogout = await _showLogoutDialog(context);
                           if (shouldLogout == true) {
                             ref.read(authProvider.notifier).logout();
-                            if (context.mounted) context.go('/');
+                            if (context.mounted) context.go('/splash');
                           }
                         },
                         borderRadius: BorderRadius.circular(
@@ -479,61 +479,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    required Responsive res,
-    bool isLogout = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(AppTheme.spacingMedium),
-        decoration: BoxDecoration(
-          color: isLogout
-              ? Colors.red.withOpacity(0.1)
-              : Theme.of(context).cardColor.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
-          border: Border.all(
-            color: isLogout
-                ? Colors.red.withOpacity(0.3)
-                : Theme.of(context).dividerColor.withOpacity(0.2),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isLogout ? Colors.red : Theme.of(context).iconTheme.color,
-              size: res.dp(2.5),
-            ),
-            SizedBox(width: AppTheme.spacingMedium),
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: AppTheme.fontSizeBodyNormal,
-                  fontWeight: FontWeight.w500,
-                  color: isLogout
-                      ? Colors.red
-                      : Theme.of(context).textTheme.bodyLarge?.color,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: res.dp(1.8),
-              color: isLogout
-                  ? Colors.red.withOpacity(0.7)
-                  : Theme.of(context).iconTheme.color?.withOpacity(0.5),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  
 
   Future<bool?> _showLogoutDialog(BuildContext context) {
     return showDialog<bool>(

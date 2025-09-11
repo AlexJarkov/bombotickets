@@ -120,8 +120,6 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
   final _repo = SellTicketsRepository();
   final _qrRepo = QrScannerRepository();
 
-  bool _loadingInfo = true;
-  String? _infoError;
   ScannedTicketInfo? _info;
   bool _formPosted = false;
   String? _qtyError;
@@ -315,10 +313,7 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
     );
   }
 
-  String _formatQrPreview(String v) {
-    if (v.length <= 160) return v;
-    return '${v.substring(0, 160)}…';
-  }
+  
 
   String _formatPrice(double v) {
     final s = v.toStringAsFixed(0);
@@ -334,10 +329,6 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
   }
 
   Future<void> _fetchInfo() async {
-    setState(() {
-      _loadingInfo = true;
-      _infoError = null;
-    });
     try {
       if (widget.ticketQr.isEmpty) {
         throw Exception('QR no recibido');
@@ -352,17 +343,13 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
       final info = ScannedTicketInfo.fromDynamic(parsed);
       setState(() {
         _info = info;
-        _loadingInfo = false;
       });
       // Pre-fill price with original if empty
       if (_priceCtrl.text.trim().isEmpty && info.originalPrice != null) {
         _priceCtrl.text = info.originalPrice!.toStringAsFixed(0);
       }
     } catch (e) {
-      setState(() {
-        _loadingInfo = false;
-        _infoError = e.toString();
-      });
+      // Intentionally silent; form can still proceed without extra info.
     }
   }
 

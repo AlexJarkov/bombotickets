@@ -17,15 +17,14 @@ class SettingsState {
 
 final settingsProvider =
     StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
-  return SettingsNotifier(ref);
+  return SettingsNotifier();
 });
 
 class SettingsNotifier extends StateNotifier<SettingsState> {
-  final Ref _ref;
   static const _kReduceMotionKey = 'settings.reduceMotion';
   static const _kThemeModeKey = 'settings.themeMode';
 
-  SettingsNotifier(this._ref) : super(const SettingsState()) {
+  SettingsNotifier() : super(const SettingsState()) {
     _load();
   }
 

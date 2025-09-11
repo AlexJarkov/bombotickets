@@ -523,6 +523,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildEventCard(EventTicket event, Responsive res, ThemeData theme) {
     return GlassCard(
       margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
@@ -1142,6 +1143,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
     );
   }
 
+  // ignore: unused_element
   void _showSellTicketBottomSheet(
     BuildContext context,
     Responsive res,

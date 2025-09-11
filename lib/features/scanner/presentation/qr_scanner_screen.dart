@@ -478,7 +478,7 @@ class _ResultCard extends StatelessWidget {
           ),
           SizedBox(height: AppTheme.spacingMedium),
           if (parsed != null)
-            _PrettyTicketInfo(parsed: parsed!)
+            _PrettyTicketInfo(parsed: parsed)
           else
             Container(
               width: double.infinity,
