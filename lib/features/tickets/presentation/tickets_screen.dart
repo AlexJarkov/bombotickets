@@ -1,6 +1,5 @@
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
-import 'package:bombotickets/features/shared/widgets/app_card.dart';
 import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_search_bar.dart';
@@ -14,6 +13,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:motion_toast/motion_toast.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../entities/ticket.dart';
+import '../providers/my_tickets_provider.dart';
 import '../providers/marketplace_provider.dart';
 
 // Provider para manejar el estado de la pantalla de tickets
@@ -45,6 +45,12 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
     );
     _tabController.addListener(() {
       ref.read(ticketsTabProvider.notifier).state = _tabController.index;
+    });
+
+    // Prefetch "Mis Tickets" so the GET is sent even before opening the tab
+    Future.microtask(() {
+      // ignore: unused_result
+      ref.read(myTicketsProvider.future);
     });
   }
 
@@ -441,82 +447,237 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
 
           SizedBox(height: res.hp(1.5)),
 
-          AppCard(
-            padding: EdgeInsets.all(res.wp(4)),
-            child: Column(
+          // Single CTA button (no card)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.push('/tickets/sell/scan'),
+              icon: const Icon(Icons.add),
+              label: const Text('Publicar Ticket'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: res.hp(1.5)),
+              ),
+            ),
+          ),
+
+          SizedBox(height: res.hp(2)),
+
+          // Unified list: show user's tickets directly below the button
+          _buildMyTicketsSection(res, theme),
+
+          // Removed tips section per request
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMyTicketsSection(Responsive res, ThemeData theme) {
+    final myTicketsAsync = ref.watch(myTicketsProvider);
+
+    return myTicketsAsync.when(
+      loading: () => Column(
+        children: List.generate(
+          3,
+          (i) => GlassCard(
+            padding: EdgeInsets.all(AppTheme.spacingNormal),
+            borderRadius: AppTheme.borderRadiusSmall,
+            margin: EdgeInsets.only(bottom: AppTheme.spacingSmall),
+            child: Row(
               children: [
-                Icon(
-                  Icons.sell_outlined,
-                  size: res.dp(6),
-                  color: AppTheme.primaryColor,
-                ),
-                SizedBox(height: res.hp(2)),
-                Text(
-                  'Vende tus tickets',
-                  style: TextStyle(
-                    fontSize: res.dp(2),
-                    fontWeight: FontWeight.bold,
+                Container(
+                  width: res.wp(11),
+                  height: res.wp(11),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(res.wp(2)),
                   ),
                 ),
-                SizedBox(height: res.hp(1)),
-                Text(
-                  'Publica tus tickets no utilizados y recibe dinero por ellos de forma segura.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: res.dp(1.5),
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                SizedBox(height: res.hp(2.5)),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => context.push('/tickets/sell/scan'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Publicar Ticket'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: res.hp(1.5)),
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: res.dp(1.4),
+                        width: double.infinity,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: res.dp(1.2),
+                        width: res.wp(40),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-
-          SizedBox(height: res.hp(3)),
-
-          Text(
-            'Tips para vender',
-            style: TextStyle(
-              fontSize: res.dp(1.8),
-              fontWeight: FontWeight.w600,
+        ),
+      ),
+      error: (err, stack) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: EdgeInsets.all(AppTheme.spacingNormal),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+              border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No se pudieron cargar tus tickets. ${err.toString()}',
+                    style: TextStyle(color: Colors.red.shade800),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => ref.refresh(myTicketsProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+              ],
             ),
           ),
+        ],
+      ),
+      data: (tickets) {
+        if (tickets.isEmpty) {
+          return GlassCard(
+            padding: EdgeInsets.all(AppTheme.spacingNormal),
+            borderRadius: AppTheme.borderRadiusSmall,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(Icons.confirmation_number_outlined, size: res.dp(3), color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                const SizedBox(height: 8),
+                Text(
+                  'Aún no tienes tickets registrados',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/tickets/sell/scan'),
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  label: const Text('Escanear y Registrar'),
+                ),
+              ],
+            ),
+          );
+        }
 
-          SizedBox(height: res.hp(1.5)),
+        return Column(
+          children: tickets.map((t) => _myTicketTile(t, res, theme)).toList(),
+        );
+      },
+    );
+  }
 
-          _buildTipCard(
-            'Precio competitivo',
-            'Revisa precios similares antes de publicar',
-            Icons.trending_up,
-            res,
-            theme,
+  Widget _myTicketTile(MyTicket t, Responsive res, ThemeData theme) {
+    Color statusColor = t.status.color;
+    String dateStr = '${t.date.day}/${t.date.month}/${t.date.year}';
+    return GlassCard(
+      padding: EdgeInsets.all(AppTheme.spacingNormal),
+      borderRadius: AppTheme.borderRadiusSmall,
+      margin: EdgeInsets.only(bottom: AppTheme.spacingSmall),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: res.wp(11),
+            height: res.wp(11),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(res.wp(2)),
+            ),
+            child: Icon(Icons.event_rounded, color: Colors.white, size: res.dp(2.2)),
           ),
-          _buildTipCard(
-            'Información completa',
-            'Incluye todos los detalles del evento',
-            Icons.info_outline,
-            res,
-            theme,
+          SizedBox(width: res.wp(3)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.eventTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: AppTheme.fontSizeBodyLarge - 1,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: res.hp(0.5)),
+                Row(
+                  children: [
+                    Icon(Icons.location_on_rounded, size: res.dp(1.4), color: AppTheme.grey1),
+                    SizedBox(width: res.wp(1)),
+                    Expanded(
+                      child: Text(
+                        t.venue,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: AppTheme.fontSizeBodyNormal,
+                          color: AppTheme.grey1,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: res.wp(2)),
+                    Icon(Icons.calendar_today_rounded, size: res.dp(1.4), color: AppTheme.grey1),
+                    SizedBox(width: res.wp(1)),
+                    Text(
+                      dateStr,
+                      style: GoogleFonts.inter(
+                        fontSize: AppTheme.fontSizeBodyNormal,
+                        color: AppTheme.grey1,
+                      ),
+                    ),
+                  ],
+                ),
+                if (t.seatInfo.isNotEmpty) ...[
+                  SizedBox(height: res.hp(0.5)),
+                  Text(
+                    t.seatInfo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: AppTheme.fontSizeBodyNormal - 1,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          _buildTipCard(
-            'Responde rápido',
-            'Contesta mensajes pronto para cerrar la venta',
-            Icons.chat_bubble_outline,
-            res,
-            theme,
+          SizedBox(width: res.wp(2)),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: res.wp(2.5),
+              vertical: res.hp(0.6),
+            ),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+            ),
+            child: Text(
+              t.status.label,
+              style: GoogleFonts.inter(
+                fontSize: AppTheme.fontSizeBodyNormal - 1,
+                fontWeight: FontWeight.w700,
+                color: statusColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -983,53 +1144,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
     );
   }
 
-  Widget _buildTipCard(
-    String title,
-    String description,
-    IconData icon,
-    Responsive res,
-    ThemeData theme,
-  ) {
-    return AppCard(
-      margin: EdgeInsets.only(bottom: res.hp(1)),
-      padding: EdgeInsets.all(res.wp(4)),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(res.wp(2)),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(res.wp(2)),
-            ),
-            child: Icon(icon, size: res.dp(2.5), color: AppTheme.primaryColor),
-          ),
-          SizedBox(width: res.wp(3)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: res.dp(1.6),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: res.hp(0.5)),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: res.dp(1.3),
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Tips section removed per request
 
   void _showFilterBottomSheet(BuildContext context) {
     final res = Responsive.of(context);
