@@ -1,25 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../entities/ticket.dart';
-import '../repositories/marketplace_repository.dart';
+import '../repositories/tickets_repository.dart';
 import 'filters_provider.dart';
 
-final marketplaceRepositoryProvider = Provider<MarketplaceRepository>((ref) {
-  return MarketplaceRepository();
+final ticketsRepositoryProvider = Provider<TicketsRepository>((ref) {
+  return TicketsRepository();
 });
 
-final marketplaceTicketsProvider = FutureProvider.autoDispose<List<EventTicket>>((
-  ref,
-) async {
-  final repo = ref.read(marketplaceRepositoryProvider);
-  final items = await repo.fetchMarketplaceTickets();
-  // Optionally keep the provider alive briefly to help with quick tab switches
-  ref.keepAlive();
-  return items;
-});
+final marketplaceTicketsProvider =
+    FutureProvider.autoDispose<List<MarketplaceOffer>>((ref) async {
+      final repo = ref.read(ticketsRepositoryProvider);
+      final items = await repo.getMarketplaceTickets();
+      // Optionally keep the provider alive briefly to help with quick tab switches
+      ref.keepAlive();
+      return items;
+    });
 
 // Provider filtrado que considera la categoría seleccionada
 final filteredMarketplaceTicketsProvider =
-    Provider.autoDispose<AsyncValue<List<EventTicket>>>((ref) {
+    Provider.autoDispose<AsyncValue<List<MarketplaceOffer>>>((ref) {
       final ticketsAsync = ref.watch(marketplaceTicketsProvider);
       final selectedCategory = ref.watch(selectedCategoryProvider);
       final searchTerm = ref.watch(searchTermProvider);
@@ -32,23 +31,25 @@ final filteredMarketplaceTicketsProvider =
 
           // Filtrar por categoría
           if (selectedCategory != null) {
-            filteredTickets = filteredTickets.where((ticket) {
-              // Aquí necesitarías una forma de relacionar el ticket con su categoría
-              // Por ahora simulo la categoría basada en el nombre del evento
-              return _getEventCategory(ticket.title) == selectedCategory.nombre;
+            filteredTickets = filteredTickets.where((offer) {
+              return offer.ticketOfertado.evento.categoria.nombre ==
+                  selectedCategory.nombre;
             }).toList();
           }
 
           // Filtrar por término de búsqueda
           if (searchTerm.isNotEmpty) {
-            filteredTickets = filteredTickets.where((ticket) {
-              return ticket.title.toLowerCase().contains(
+            filteredTickets = filteredTickets.where((offer) {
+              final evento = offer.ticketOfertado.evento;
+              return evento.nombre.toLowerCase().contains(
                     searchTerm.toLowerCase(),
                   ) ||
-                  ticket.artist.toLowerCase().contains(
+                  evento.lugar.toLowerCase().contains(
                     searchTerm.toLowerCase(),
                   ) ||
-                  ticket.venue.toLowerCase().contains(searchTerm.toLowerCase());
+                  evento.ciudad.toLowerCase().contains(
+                    searchTerm.toLowerCase(),
+                  );
             }).toList();
           }
 
@@ -57,17 +58,39 @@ final filteredMarketplaceTicketsProvider =
       );
     });
 
-// Helper function para determinar categoría basada en el nombre (temporal)
-String _getEventCategory(String eventTitle) {
-  final title = eventTitle.toLowerCase();
-  if (title.contains('concierto') ||
-      title.contains('música') ||
-      title.contains('festival')) {
-    return 'Conciertos';
-  } else if (title.contains('partido') ||
-      title.contains('fútbol') ||
-      title.contains('deportes')) {
-    return 'Partidos';
-  }
-  return 'Conciertos'; // Por defecto
-}
+// Provider para obtener tickets de un evento específico
+final eventTicketsProvider = FutureProvider.autoDispose
+    .family<List<MarketplaceOffer>, String>((ref, eventName) async {
+      final repo = ref.read(ticketsRepositoryProvider);
+      return repo.getMarketplaceTicketsByEvent(eventName);
+    });
+
+// Provider para zonas
+final zonesProvider = FutureProvider.autoDispose<List<Zone>>((ref) async {
+  final repo = ref.read(ticketsRepositoryProvider);
+  return repo.getZones();
+});
+
+// Provider para filtrar tickets por zona en una pantalla de evento
+final filteredEventTicketsProvider = Provider.autoDispose
+    .family<AsyncValue<List<MarketplaceOffer>>, String>((ref, eventName) {
+      final ticketsAsync = ref.watch(eventTicketsProvider(eventName));
+      final selectedZone = ref.watch(selectedZoneProvider);
+
+      return ticketsAsync.when(
+        loading: () => const AsyncValue.loading(),
+        error: (error, stack) => AsyncValue.error(error, stack),
+        data: (tickets) {
+          var filteredTickets = tickets;
+
+          // Filtrar por zona si hay una seleccionada
+          if (selectedZone != null) {
+            filteredTickets = filteredTickets.where((offer) {
+              return offer.ticketOfertado.zona.zonaId == selectedZone.zonaId;
+            }).toList();
+          }
+
+          return AsyncValue.data(filteredTickets);
+        },
+      );
+    });

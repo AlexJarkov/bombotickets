@@ -15,25 +15,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pull_to_refresh_flutter3/pull_to_refresh_flutter3.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   static String name = 'profile';
 
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Always fetch remote profile when screen is first shown (if authenticated)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authEmail = ref.read(authProvider).user?.username ?? '';
+      final cachedEmail = ref.read(profileProvider).email;
+      final email = authEmail.isNotEmpty ? authEmail : cachedEmail;
+      if (email.isNotEmpty) {
+        ref.read(profileProvider.notifier).fetchRemoteProfile(email);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final authState = ref.watch(authProvider);
     final profile = ref.watch(profileProvider);
     final settings = ref.watch(settingsProvider);
     final bool reduce = settings.reduceMotion;
 
+    // Current authenticated email (used by pull-to-refresh)
+    final authEmail = authState.user?.username ?? '';
+
     final displayName =
         (profile.fullName.isNotEmpty
                 ? profile.fullName
-                : (authState.user?.username ?? 'Usuario'))
+                : authEmail.isNotEmpty
+                ? authEmail
+                : 'Usuario')
             .trim();
+
+    final refreshController = RefreshController(initialRefresh: false);
 
     return AnimatedBackground(
       style: BackgroundStyle.surface,
@@ -42,14 +69,64 @@ class ProfileScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.all(AppTheme.spacingMedium),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: AppTheme.spacingLarge),
+          child: SmartRefresher(
+            controller: refreshController,
+            enablePullDown: true,
+            header: WaterDropHeader(
+              waterDropColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : AppTheme.primaryColor,
+              idleIcon: Icon(
+                Icons.arrow_downward,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.primaryColor
+                    : Colors.white,
+              ),
+              refresh: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.primaryColor
+                        : Colors.white,
+                  ),
+                ),
+              ),
+              complete: Icon(
+                Icons.check_rounded,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.primaryColor
+                    : Colors.white,
+              ),
+              failed: Icon(
+                Icons.error_outline,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.primaryColor
+                    : Colors.white,
+              ),
+            ),
+            onRefresh: () async {
+              try {
+                final fallbackEmail = ref.read(profileProvider).email;
+                final email = authEmail.isNotEmpty ? authEmail : fallbackEmail;
+                if (email.isNotEmpty) {
+                  await ref.read(profileProvider.notifier).fetchRemoteProfile(email);
+                }
+                refreshController.refreshCompleted();
+              } catch (_) {
+                refreshController.refreshFailed();
+              }
+            },
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: EdgeInsets.all(AppTheme.spacingMedium),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: AppTheme.spacingLarge),
 
                   // Perfil card con estilo App/Glass
                   AppCard(
@@ -61,24 +138,40 @@ class ProfileScreen extends ConsumerWidget {
                           children: [
                             CircleAvatar(
                               radius: res.wp(12),
-                              backgroundColor: AppTheme.primaryColor
-                                  .withOpacity(0.12),
-                              backgroundImage:
-                                  profile.photoPath != null &&
-                                      profile.photoPath!.isNotEmpty &&
-                                      File(profile.photoPath!).existsSync()
-                                  ? FileImage(File(profile.photoPath!))
-                                  : null,
-                              child:
-                                  (profile.photoPath == null ||
-                                      profile.photoPath!.isEmpty ||
-                                      !File(profile.photoPath!).existsSync())
-                                  ? Icon(
+                              backgroundColor: AppTheme.primaryColor.withOpacity(0.12),
+                              backgroundImage: () {
+                                final path = profile.photoPath;
+                                if (path == null || path.isEmpty) return null;
+                                if (path.startsWith('http')) {
+                                  return NetworkImage(path);
+                                }
+                                final file = File(path);
+                                if (file.existsSync()) {
+                                  return FileImage(file);
+                                }
+                                return null;
+                              }() as ImageProvider<Object>?,
+                              child: () {
+                                final path = profile.photoPath;
+                                if (path == null || path.isEmpty) {
+                                  return Icon(
+                                    Icons.person_rounded,
+                                    size: res.dp(6),
+                                    color: AppTheme.primaryColor,
+                                  );
+                                }
+                                if (!path.startsWith('http')) {
+                                  final file = File(path);
+                                  if (!file.existsSync()) {
+                                    return Icon(
                                       Icons.person_rounded,
                                       size: res.dp(6),
                                       color: AppTheme.primaryColor,
-                                    )
-                                  : null,
+                                    );
+                                  }
+                                }
+                                return null;
+                              }(),
                             ),
                           ],
                         ),
@@ -107,6 +200,17 @@ class ProfileScreen extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             minFontSize: 12,
+                          ),
+                        ],
+                        if (profile.address?.isNotEmpty == true) ...[
+                          SizedBox(height: AppTheme.spacingSmall),
+                          Text(
+                            profile.address!,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: AppTheme.fontSizeBodyNormal,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+                            ),
                           ),
                         ],
                         SizedBox(height: AppTheme.spacingMedium),
@@ -172,13 +276,7 @@ class ProfileScreen extends ConsumerWidget {
                           'Carnet/NIT',
                           profile.idNumber.isNotEmpty ? profile.idNumber : '—',
                         ),
-                        _dataRow(
-                          context,
-                          'Dirección',
-                          profile.address?.isNotEmpty == true
-                              ? profile.address!
-                              : '—',
-                        ),
+                        // Removed Dirección. 'descripcion' is shown under avatar as a bio.
                         _dataRow(
                           context,
                           'Número de Cuenta',
@@ -287,7 +385,7 @@ class ProfileScreen extends ConsumerWidget {
                           final shouldLogout = await _showLogoutDialog(context);
                           if (shouldLogout == true) {
                             ref.read(authProvider.notifier).logout();
-                            if (context.mounted) context.go('/');
+                            if (context.mounted) context.go('/splash');
                           }
                         },
                         borderRadius: BorderRadius.circular(
@@ -328,32 +426,15 @@ class ProfileScreen extends ConsumerWidget {
 
                   SizedBox(height: AppTheme.spacingLarge),
 
-                  // Logout Button Simple
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.logout_rounded,
-                    title: 'Cerrar Sesión',
-                    onTap: () async {
-                      final shouldLogout = await _showLogoutDialog(context);
-                      if (shouldLogout == true) {
-                        await ref.read(authProvider.notifier).logout();
-                        if (context.mounted) {
-                          context.go('/splash');
-                        }
-                      }
-                    },
-                    res: res,
-                    isLogout: true,
-                  ),
-
-                  SizedBox(height: AppTheme.spacingLarge),
+                  // (Logout block defined below with animate())
                 ],
               ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _sectionTitle(BuildContext context, String text) {
@@ -372,29 +453,25 @@ class ProfileScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.symmetric(vertical: AppTheme.spacingSmall / 2),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: AppTheme.fontSizeBodyNormal - 1,
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-                fontWeight: FontWeight.w500,
-              ),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: AppTheme.fontSizeBodyNormal - 1,
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              fontWeight: FontWeight.w500,
             ),
           ),
-          Expanded(
-            child: Text(
-              value.isEmpty ? '—' : value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                fontSize: AppTheme.fontSizeBodyLarge - 1,
-                fontWeight: FontWeight.w600,
-              ),
+          const SizedBox(height: 4),
+          Text(
+            value.isEmpty ? '—' : value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              fontSize: AppTheme.fontSizeBodyLarge - 1,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -402,61 +479,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    required Responsive res,
-    bool isLogout = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(AppTheme.spacingMedium),
-        decoration: BoxDecoration(
-          color: isLogout
-              ? Colors.red.withOpacity(0.1)
-              : Theme.of(context).cardColor.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
-          border: Border.all(
-            color: isLogout
-                ? Colors.red.withOpacity(0.3)
-                : Theme.of(context).dividerColor.withOpacity(0.2),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isLogout ? Colors.red : Theme.of(context).iconTheme.color,
-              size: res.dp(2.5),
-            ),
-            SizedBox(width: AppTheme.spacingMedium),
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: AppTheme.fontSizeBodyNormal,
-                  fontWeight: FontWeight.w500,
-                  color: isLogout
-                      ? Colors.red
-                      : Theme.of(context).textTheme.bodyLarge?.color,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: res.dp(1.8),
-              color: isLogout
-                  ? Colors.red.withOpacity(0.7)
-                  : Theme.of(context).iconTheme.color?.withOpacity(0.5),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  
 
   Future<bool?> _showLogoutDialog(BuildContext context) {
     return showDialog<bool>(

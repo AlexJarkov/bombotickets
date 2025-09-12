@@ -119,3 +119,276 @@ class MyTicket {
       status == TicketStatus.activo && date.isAfter(DateTime.now());
   bool get isExpired => date.isBefore(DateTime.now());
 }
+
+// Enums para estados de ofertas
+enum OfferStatus { publicada, vendida, cancelada }
+
+// Nueva clase para ofertas de marketplace (mis tickets en venta)
+class MarketplaceOffer {
+  final int id;
+  final double precioOfertado;
+  final OfferStatus statusOferta;
+  final DateTime fechaOferta;
+  final DateTime? fechaRespuesta;
+  final UserOfertante userOfertante;
+  final TicketInfo ticketOfertado;
+
+  const MarketplaceOffer({
+    required this.id,
+    required this.precioOfertado,
+    required this.statusOferta,
+    required this.fechaOferta,
+    this.fechaRespuesta,
+    required this.userOfertante,
+    required this.ticketOfertado,
+  });
+
+  factory MarketplaceOffer.fromJson(Map<String, dynamic> json) {
+    return MarketplaceOffer(
+      id: json['id'] as int,
+      precioOfertado: (json['precio_ofertado'] as num).toDouble(),
+      statusOferta: _parseOfferStatus(json['status_oferta'] as String),
+      fechaOferta: DateTime.parse(json['fecha_oferta'] as String),
+      fechaRespuesta: json['fecha_respuesta'] != null
+          ? DateTime.parse(json['fecha_respuesta'] as String)
+          : null,
+      userOfertante: UserOfertante.fromJson(
+        json['user_ofertante'] as Map<String, dynamic>,
+      ),
+      ticketOfertado: TicketInfo.fromJson(
+        json['ticket_ofertado'] as Map<String, dynamic>,
+      ),
+    );
+  }
+
+  static OfferStatus _parseOfferStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'PUBLICADA':
+        return OfferStatus.publicada;
+      case 'VENDIDA':
+        return OfferStatus.vendida;
+      case 'CANCELADA':
+        return OfferStatus.cancelada;
+      default:
+        return OfferStatus.publicada;
+    }
+  }
+
+  bool get isActive => statusOferta == OfferStatus.publicada;
+  bool get isSold => statusOferta == OfferStatus.vendida;
+  bool get isCancelled => statusOferta == OfferStatus.cancelada;
+}
+
+// Información detallada del ticket en oferta
+class TicketInfo {
+  final int id;
+  final String token;
+  final EventInfo evento;
+  final ZoneInfo zona;
+  final String qrCodeUrl;
+  final String status;
+
+  const TicketInfo({
+    required this.id,
+    required this.token,
+    required this.evento,
+    required this.zona,
+    required this.qrCodeUrl,
+    required this.status,
+  });
+
+  factory TicketInfo.fromJson(Map<String, dynamic> json) {
+    return TicketInfo(
+      id: json['id'] as int,
+      token: json['token'] as String,
+      evento: EventInfo.fromJson(json['evento'] as Map<String, dynamic>),
+      zona: ZoneInfo.fromJson(json['zona'] as Map<String, dynamic>),
+      qrCodeUrl: json['qrCodeUrl'] as String,
+      status: json['status'] as String,
+    );
+  }
+}
+
+// Información del evento
+class EventInfo {
+  final int eventoId;
+  final String nombre;
+  final String fecha;
+  final String lugar;
+  final String ciudad;
+  final String imagen;
+  final int maxTickets;
+  final CategoryInfo categoria;
+  final OrganizerInfo organizador;
+
+  const EventInfo({
+    required this.eventoId,
+    required this.nombre,
+    required this.fecha,
+    required this.lugar,
+    required this.ciudad,
+    required this.imagen,
+    required this.maxTickets,
+    required this.categoria,
+    required this.organizador,
+  });
+
+  factory EventInfo.fromJson(Map<String, dynamic> json) {
+    return EventInfo(
+      eventoId: json['evento_id'] as int,
+      nombre: json['nombre'] as String,
+      fecha: json['fecha'] as String,
+      lugar: json['lugar'] as String,
+      ciudad: json['ciudad'] as String,
+      imagen: json['imagen'] as String,
+      maxTickets: json['max_tickets'] as int,
+      categoria: CategoryInfo.fromJson(
+        json['categoria'] as Map<String, dynamic>,
+      ),
+      organizador: OrganizerInfo.fromJson(
+        json['organizador'] as Map<String, dynamic>,
+      ),
+    );
+  }
+
+  DateTime get fechaDateTime {
+    final parts = fecha.split('-');
+    return DateTime(
+      int.parse(parts[2]), // año
+      int.parse(parts[1]), // mes
+      int.parse(parts[0]), // día
+    );
+  }
+}
+
+// Información de la zona
+class ZoneInfo {
+  final int zonaId;
+  final String nombre;
+  final int precio;
+  final int maxTicketsZonas;
+
+  const ZoneInfo({
+    required this.zonaId,
+    required this.nombre,
+    required this.precio,
+    required this.maxTicketsZonas,
+  });
+
+  factory ZoneInfo.fromJson(Map<String, dynamic> json) {
+    return ZoneInfo(
+      zonaId: json['zona_id'] as int,
+      nombre: json['nombre'] as String,
+      precio: json['precio'] as int,
+      maxTicketsZonas: json['max_tickets_zonas'] as int,
+    );
+  }
+}
+
+// Información de categoría
+class CategoryInfo {
+  final int categoriaId;
+  final String nombre;
+
+  const CategoryInfo({required this.categoriaId, required this.nombre});
+
+  factory CategoryInfo.fromJson(Map<String, dynamic> json) {
+    return CategoryInfo(
+      categoriaId: json['categoria_id'] as int,
+      nombre: json['nombre'] as String,
+    );
+  }
+}
+
+// Información del organizador
+class OrganizerInfo {
+  final int organizadorId;
+  final String nombre;
+
+  const OrganizerInfo({required this.organizadorId, required this.nombre});
+
+  factory OrganizerInfo.fromJson(Map<String, dynamic> json) {
+    return OrganizerInfo(
+      organizadorId: json['organizador_id'] as int,
+      nombre: json['nombre'] as String,
+    );
+  }
+}
+
+// Nueva entidad para Zonas
+class Zone {
+  final int zonaId;
+  final String nombre;
+  final int precio;
+  final EventInfo evento;
+  final int maxTicketsZonas;
+
+  const Zone({
+    required this.zonaId,
+    required this.nombre,
+    required this.precio,
+    required this.evento,
+    required this.maxTicketsZonas,
+  });
+
+  factory Zone.fromJson(Map<String, dynamic> json) {
+    return Zone(
+      zonaId: json['zona_id'] as int,
+      nombre: json['nombre'] as String,
+      precio: json['precio'] as int,
+      evento: EventInfo.fromJson(json['evento'] as Map<String, dynamic>),
+      maxTicketsZonas: json['max_tickets_zonas'] as int,
+    );
+  }
+}
+
+// Información del usuario ofertante
+class UserOfertante {
+  final int id;
+  final String nombres;
+  final String apellidoP;
+  final String apellidoM;
+  final String email;
+  final bool verificado;
+  final String? numeroCuenta;
+  final String? nombreBanca;
+  final String? imagen;
+  final String? descripcion;
+  final String? telefono;
+  final String? ci;
+  final bool staff;
+
+  const UserOfertante({
+    required this.id,
+    required this.nombres,
+    required this.apellidoP,
+    required this.apellidoM,
+    required this.email,
+    required this.verificado,
+    this.numeroCuenta,
+    this.nombreBanca,
+    this.imagen,
+    this.descripcion,
+    this.telefono,
+    this.ci,
+    required this.staff,
+  });
+
+  factory UserOfertante.fromJson(Map<String, dynamic> json) {
+    return UserOfertante(
+      id: json['id'] as int,
+      nombres: json['nombres'] as String,
+      apellidoP: json['apellidoP'] as String,
+      apellidoM: json['apellidoM'] as String,
+      email: json['email'] as String,
+      verificado: json['verificado'] as bool,
+      numeroCuenta: json['numeroCuenta'] as String?,
+      nombreBanca: json['nombreBanca'] as String?,
+      imagen: json['imagen'] as String?,
+      descripcion: json['descripcion'] as String?,
+      telefono: json['telefono'] as String?,
+      ci: json['ci'] as String?,
+      staff: json['staff'] as bool,
+    );
+  }
+}

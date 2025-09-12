@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bombotickets/features/profile/repositories/profile_repository.dart';
+import 'package:bombotickets/config/environment.dart';
 
 class ProfileState {
   final String fullName;
@@ -55,6 +59,7 @@ final profileProvider =
 });
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
+  final ProfileRepository _repo = ProfileRepository();
   static const _kFullName = 'profile.fullName';
   static const _kLastName = 'profile.lastName';
   static const _kEmail = 'profile.email';
@@ -85,11 +90,55 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   }
 
   Future<void> updateProfile(ProfileState newState) async {
-    state = newState;
+    // Update server first, then refresh from server, then persist locally.
+    String effectiveEmail = state.email.isNotEmpty ? state.email : newState.email;
+    try {
+      if (effectiveEmail.isNotEmpty) {
+        // Map local fields to backend payload
+        final apellidoParts = (newState.lastName).trim().split(RegExp(r"\s+"));
+        final apellidoP = apellidoParts.isNotEmpty ? apellidoParts.first : '';
+        final apellidoM = apellidoParts.length > 1
+            ? apellidoParts.sublist(1).join(' ')
+            : '';
+
+        final payload = <String, dynamic>{
+          'nombre': newState.fullName.trim(),
+          'apellidoP': apellidoP,
+          'apellidoM': apellidoM,
+          // 'password': not updated here
+          'numeroCuenta': newState.accountNumber.trim(),
+          'nombreBanca': newState.bankName.trim(),
+          'descripcion': (newState.address ?? '').trim(),
+          'ci': newState.idNumber.trim(),
+        }..removeWhere((key, value) => value == null || (value is String && value.isEmpty));
+
+        await _repo.updateUserByEmail(effectiveEmail, payload);
+
+        // Handle image upload or delete if changed
+        final hadPhoto = (state.photoPath?.isNotEmpty ?? false);
+        final hasNewPhoto = (newState.photoPath?.isNotEmpty ?? false);
+        if (hasNewPhoto && newState.photoPath != state.photoPath) {
+          final file = File(newState.photoPath!);
+          if (await file.exists()) {
+            await _repo.uploadProfileImageByEmail(effectiveEmail, file);
+          }
+        } else if (!hasNewPhoto && hadPhoto) {
+          await _repo.deleteProfileImageByEmail(effectiveEmail);
+        }
+
+        // Refresh from server so local matches latest backend values
+        await fetchRemoteProfile(effectiveEmail);
+      }
+    } catch (_) {
+      // If server update fails, still update local so user sees their changes
+      state = newState;
+    }
+
+    // Persist local state to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kFullName, state.fullName);
     await prefs.setString(_kLastName, state.lastName);
-    await prefs.setString(_kEmail, state.email);
+    await prefs.setString(_kEmail, state.email.isNotEmpty ? state.email : effectiveEmail);
     await prefs.setString(_kPhoneNumber, state.phoneNumber);
     await prefs.setString(_kIdNumber, state.idNumber);
     if (state.address == null || state.address!.isEmpty) {
@@ -115,5 +164,57 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       await prefs.setString(_kPhotoPath, path);
     }
   }
-}
 
+  Future<void> fetchRemoteProfile(String email) async {
+    final raw = await _repo.getUserByEmail(email);
+    final data = (raw['data'] is Map) ? (raw['data'] as Map) : raw;
+
+      final nombre = (data['nombres'] ?? data['nombre'] ?? '').toString();
+      final apellidoP = (data['apellidoP'] ?? '').toString();
+      final apellidoM = (data['apellidoM'] ?? '').toString();
+      final emailVal = (data['email'] ?? email).toString();
+      final numeroCuenta = (data['numeroCuenta'] ?? '').toString();
+      final nombreBanca = (data['nombreBanca'] ?? '').toString();
+      final descripcion = (data['descripcion'] ?? '').toString();
+      final ci = (data['ci'] ?? '').toString();
+      final telefono = (data['telefono'] ?? '').toString();
+      String imagen = (data['imagen'] ?? '').toString();
+      if (imagen.isNotEmpty && !imagen.startsWith('http')) {
+        final base = Environment.apiUrl.replaceAll(RegExp(r'/+$'), '');
+        final rel = imagen.replaceFirst(RegExp(r'^/+'), '');
+        imagen = '$base/$rel';
+      }
+
+    state = state.copyWith(
+      fullName: nombre,
+      lastName: [apellidoP, apellidoM].where((s) => s.trim().isNotEmpty).join(' ').trim(),
+      email: emailVal,
+      accountNumber: numeroCuenta,
+      bankName: nombreBanca,
+      address: descripcion.isEmpty ? null : descripcion,
+      idNumber: ci,
+      phoneNumber: telefono,
+      photoPath: imagen,
+    );
+
+    // Persist basic fields locally
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kFullName, state.fullName);
+    await prefs.setString(_kLastName, state.lastName);
+    await prefs.setString(_kEmail, state.email);
+    await prefs.setString(_kIdNumber, state.idNumber);
+    await prefs.setString(_kPhoneNumber, state.phoneNumber);
+    if (state.photoPath == null || state.photoPath!.isEmpty) {
+      await prefs.remove(_kPhotoPath);
+    } else {
+      await prefs.setString(_kPhotoPath, state.photoPath!);
+    }
+    await prefs.setString(_kAccountNumber, state.accountNumber);
+    await prefs.setString(_kBankName, state.bankName);
+    if (state.address == null || state.address!.isEmpty) {
+      await prefs.remove(_kAddress);
+    } else {
+      await prefs.setString(_kAddress, state.address!);
+    }
+  }
+}

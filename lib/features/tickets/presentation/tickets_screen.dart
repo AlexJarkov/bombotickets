@@ -1,7 +1,7 @@
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
-import 'package:bombotickets/features/shared/widgets/app_card.dart';
 import 'package:bombotickets/features/shared/widgets/animated_background.dart';
+import 'package:bombotickets/features/shared/widgets/app_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_search_bar.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +11,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../entities/ticket.dart';
 import '../entities/real_event.dart';
-import '../providers/marketplace_provider.dart';
+import '../providers/my_tickets_provider.dart';
 import '../providers/real_events_provider.dart';
 import '../widgets/real_event_card.dart';
+import 'event_tickets_screen.dart';
 
 // Provider para manejar el estado de la pantalla de tickets
 final ticketsTabProvider = StateProvider<int>((ref) => 0);
@@ -97,7 +98,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                             ),
                             tabs: const [
                               Tab(text: 'Comprar'),
-                              Tab(text: 'Mis Tickets'),
+                              Tab(text: 'Mis Ventas'),
                             ],
                           ),
                         ),
@@ -316,7 +317,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   }
 
   Widget _buildMyTicketsTab(Responsive res, ThemeData theme) {
-    final myTicketsAsync = ref.watch(marketplaceTicketsProvider);
+    final myTicketsAsync = ref.watch(myTicketsProvider);
 
     return myTicketsAsync.when(
       loading: () => Center(
@@ -348,13 +349,13 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.confirmation_num_outlined,
+                  Icons.storefront_outlined,
                   size: res.dp(8),
                   color: AppTheme.grey1,
                 ),
                 SizedBox(height: AppTheme.spacingMedium),
                 Text(
-                  'No tienes tickets',
+                  'No tienes tickets en venta',
                   style: GoogleFonts.poppins(
                     fontSize: AppTheme.fontSizeBodyLarge,
                     fontWeight: FontWeight.w600,
@@ -363,7 +364,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                 ),
                 SizedBox(height: AppTheme.spacingSmall),
                 Text(
-                  'Compra tickets en la pestaña "Comprar"',
+                  'Publica tickets para venta en la sección "Vender"',
                   style: GoogleFonts.inter(
                     fontSize: AppTheme.fontSizeBodyNormal,
                     color: AppTheme.grey1,
@@ -399,7 +400,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   }
 
   Widget _buildMyTicketCard(
-    EventTicket ticket,
+    MarketplaceOffer offer,
     Responsive res,
     ThemeData theme,
   ) {
@@ -442,7 +443,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ticket.title,
+                      offer.ticketOfertado.evento.nombre,
                       style: GoogleFonts.poppins(
                         fontSize: AppTheme.fontSizeBodyLarge,
                         fontWeight: FontWeight.bold,
@@ -455,7 +456,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
                     SizedBox(height: AppTheme.spacingSmall / 2),
 
                     Text(
-                      ticket.venue,
+                      '${offer.ticketOfertado.evento.lugar} - ${offer.ticketOfertado.evento.ciudad}',
                       style: GoogleFonts.inter(
                         fontSize: AppTheme.fontSizeBodyNormal,
                         color: AppTheme.grey1,
@@ -466,11 +467,35 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
 
                     SizedBox(height: AppTheme.spacingSmall / 2),
 
+                    Row(
+                      children: [
+                        Text(
+                          offer.ticketOfertado.evento.fecha,
+                          style: GoogleFonts.inter(
+                            fontSize: AppTheme.fontSizeBodyNormal,
+                            color: AppTheme.grey1,
+                          ),
+                        ),
+                        SizedBox(width: AppTheme.spacingSmall),
+                        Text(
+                          '• ${offer.ticketOfertado.zona.nombre}',
+                          style: GoogleFonts.inter(
+                            fontSize: AppTheme.fontSizeBodyNormal,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: AppTheme.spacingSmall / 2),
+
                     Text(
-                      '${ticket.date.day}/${ticket.date.month}/${ticket.date.year}',
+                      'Precio: Bs. ${offer.precioOfertado.toStringAsFixed(0)}',
                       style: GoogleFonts.inter(
-                        fontSize: AppTheme.fontSizeBodyNormal,
-                        color: AppTheme.grey1,
+                        fontSize: AppTheme.fontSizeBodyLarge,
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -481,31 +506,33 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
 
           SizedBox(height: AppTheme.spacingMedium),
 
-          // Estado del ticket
+          // Estado de la oferta
           Container(
             padding: EdgeInsets.symmetric(
               horizontal: AppTheme.spacingSmall,
               vertical: AppTheme.spacingSmall / 2,
             ),
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.12),
+              color: _getOfferStatusColor(
+                offer.statusOferta,
+              ).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.check_circle_outline,
+                  _getOfferStatusIcon(offer.statusOferta),
                   size: res.dp(1.6),
-                  color: Colors.green,
+                  color: _getOfferStatusColor(offer.statusOferta),
                 ),
                 SizedBox(width: 4),
                 Text(
-                  'Válido',
+                  _getOfferStatusText(offer.statusOferta),
                   style: GoogleFonts.inter(
                     fontSize: AppTheme.fontSizeBodyNormal,
                     fontWeight: FontWeight.w600,
-                    color: Colors.green,
+                    color: _getOfferStatusColor(offer.statusOferta),
                   ),
                 ),
               ],
@@ -555,31 +582,9 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   }
 
   void _showEventDetails(RealEvent event, Responsive res, ThemeData theme) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(event.nombre),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Categoría: ${event.categoria.nombre}'),
-            const SizedBox(height: 8),
-            Text('Organizador: ${event.organizador.nombre}'),
-            const SizedBox(height: 8),
-            Text('Lugar: ${event.lugar}, ${event.ciudad}'),
-            const SizedBox(height: 8),
-            Text('Fecha: ${event.fecha}'),
-            const SizedBox(height: 8),
-            Text('Máximo tickets: ${event.maxTickets}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cerrar'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventTicketsScreen(eventName: event.nombre),
       ),
     );
   }
@@ -631,5 +636,39 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
         ],
       ),
     );
+  }
+
+  // Métodos helper para el estado de las ofertas
+  Color _getOfferStatusColor(OfferStatus status) {
+    switch (status) {
+      case OfferStatus.publicada:
+        return Colors.green;
+      case OfferStatus.vendida:
+        return Colors.blue;
+      case OfferStatus.cancelada:
+        return Colors.red;
+    }
+  }
+
+  IconData _getOfferStatusIcon(OfferStatus status) {
+    switch (status) {
+      case OfferStatus.publicada:
+        return Icons.storefront;
+      case OfferStatus.vendida:
+        return Icons.check_circle;
+      case OfferStatus.cancelada:
+        return Icons.cancel;
+    }
+  }
+
+  String _getOfferStatusText(OfferStatus status) {
+    switch (status) {
+      case OfferStatus.publicada:
+        return 'En venta';
+      case OfferStatus.vendida:
+        return 'Vendido';
+      case OfferStatus.cancelada:
+        return 'Cancelado';
+    }
   }
 }

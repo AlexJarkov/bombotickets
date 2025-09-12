@@ -1,26 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../entities/real_event.dart';
 import '../entities/event_type.dart';
-import '../repositories/real_events_repository.dart';
-
-// Provider para el repository de eventos reales
-final realEventsRepositoryProvider = Provider<RealEventsRepository>((ref) {
-  return RealEventsRepository();
-});
+import '../repositories/tickets_repository.dart';
 
 // Provider para obtener todos los eventos
 final allRealEventsProvider = FutureProvider.autoDispose<List<RealEvent>>((
   ref,
 ) async {
-  final repo = ref.read(realEventsRepositoryProvider);
-  final events = await repo.getAllEvents();
+  final repo = TicketsRepository();
+  final events = await repo.getAllRealEvents();
   ref.keepAlive();
   return events;
 });
 
-// Provider para las categorías (reutilizando)
+// Provider para las categorías
 final eventCategoriesProvider = FutureProvider<List<EventType>>((ref) async {
-  final repo = ref.read(realEventsRepositoryProvider);
+  final repo = TicketsRepository();
   return repo.getEventTypes();
 });
 

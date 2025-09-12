@@ -9,7 +9,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:bombotickets/features/shared/utils/responsive.dart';
-import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 
 class QrLiveScannerScreen extends ConsumerStatefulWidget {
@@ -74,8 +73,6 @@ class _QrLiveScannerScreenState extends ConsumerState<QrLiveScannerScreen>
 
   @override
   Widget build(BuildContext context) {
-    final res = Responsive.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Colors.black,
       body: LayoutBuilder(
@@ -199,12 +196,12 @@ class _ScannerOverlay extends StatefulWidget {
   final bool processing;
 
   const _ScannerOverlay({
-    super.key,
+    Key? key,
     required this.cutOutRect,
     required this.onBack,
     required this.onToggleTorch,
     required this.processing,
-  });
+  }) : super(key: key);
 
   @override
   State<_ScannerOverlay> createState() => _ScannerOverlayState();
@@ -241,11 +238,8 @@ class _ScannerOverlayState extends State<_ScannerOverlay>
           builder: (context, constraints) {
             final cutOutRect = widget.cutOutRect;
             final cutOutTop = cutOutRect.top;
-            final cutOutLeft = cutOutRect.left;
             final cutOutSize = cutOutRect.width;
             final t = _glowCtrl.value; // 0..1
-            final glowOpacity = 0.35 + 0.35 * t; // 0.35..0.7
-            final blur = 8.0 + 16.0 * t; // 8..24
 
             return Stack(
               children: [

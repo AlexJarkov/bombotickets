@@ -12,7 +12,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:bombotickets/features/scanner/repositories/qr_scanner_repository.dart';
-import 'package:bombotickets/features/tickets/repositories/sell_tickets_repository.dart';
+import 'package:bombotickets/features/tickets/repositories/tickets_repository.dart';
 import 'dart:convert';
 
 class ScannedTicketInfo {
@@ -143,11 +143,9 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
   final _qtyCtrl = TextEditingController(text: '1');
   final _priceCtrl = TextEditingController();
   bool _submitting = false;
-  final _repo = SellTicketsRepository();
+  final _repo = TicketsRepository();
   final _qrRepo = QrScannerRepository();
 
-  bool _loadingInfo = true;
-  String? _infoError;
   ScannedTicketInfo? _info;
   bool _formPosted = false;
   String? _qtyError;
@@ -365,11 +363,6 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
     );
   }
 
-  String _formatQrPreview(String v) {
-    if (v.length <= 160) return v;
-    return '${v.substring(0, 160)}…';
-  }
-
   String _formatPrice(double v) {
     final s = v.toStringAsFixed(0);
     final withSep = s.replaceAllMapped(
@@ -386,10 +379,6 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
   }
 
   Future<void> _fetchInfo() async {
-    setState(() {
-      _loadingInfo = true;
-      _infoError = null;
-    });
     try {
       if (widget.ticketQr.isEmpty) {
         throw Exception('QR no recibido');
@@ -404,17 +393,13 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
       final info = ScannedTicketInfo.fromDynamic(parsed);
       setState(() {
         _info = info;
-        _loadingInfo = false;
       });
       // Pre-fill price with original if empty
       if (_priceCtrl.text.trim().isEmpty && info.originalPrice != null) {
         _priceCtrl.text = info.originalPrice!.toStringAsFixed(0);
       }
     } catch (e) {
-      setState(() {
-        _loadingInfo = false;
-        _infoError = e.toString();
-      });
+      // Intentionally silent; form can still proceed without extra info.
     }
   }
 
