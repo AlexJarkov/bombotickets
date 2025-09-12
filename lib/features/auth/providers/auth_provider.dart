@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bombotickets/features/auth/entities/user.dart';
 import 'package:bombotickets/features/auth/repositories/auth_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 enum AuthStatus {
   checking,
@@ -42,28 +41,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await authRepository.login(email, password);
 
-      log("Login successful: $response");
+      log("Login response: ${response.mensaje}");
 
-      // Retrieve stored token to guarantee non-null String
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      if (token == null || token.isEmpty) {
-        throw Exception('Token de autenticación no disponible tras el inicio de sesión');
+      if (response.codigo == 200 && response.data != null) {
+        final user = User(
+          username: response.data!.email,
+          token: response.data!.token,
+        );
+
+        state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      } else {
+        state = state.copyWith(
+          status: AuthStatus.notAuthenticated,
+          errorMessage: response.mensaje,
+        );
       }
-
-      final user = User(
-        username: (response is Map && response['email'] is String && (response['email'] as String).isNotEmpty)
-            ? response['email'] as String
-            : email,
-        token: token,
-      );
-
-      state = state.copyWith(status: AuthStatus.authenticated, user: user);
-    } on Exception catch (e) {
+    } catch (e) {
       log("Login error: ${e.toString()}");
       state = state.copyWith(
         status: AuthStatus.notAuthenticated,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: 'Error de conexión',
       );
     }
   }
@@ -85,16 +82,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password,
       );
 
-      log("Register successful: $response");
+      log("Register response: ${response.mensaje}");
 
-      // After successful registration, set status to registrationSuccess
-      // so the register screen can show success toast and redirect to OTP verification
-      state = state.copyWith(status: AuthStatus.registrationSuccess);
-    } on Exception catch (e) {
+      if (response.codigo == 201) {
+        state = state.copyWith(status: AuthStatus.registrationSuccess);
+      } else {
+        state = state.copyWith(
+          status: AuthStatus.notAuthenticated,
+          errorMessage: response.mensaje,
+        );
+      }
+    } catch (e) {
       log("Register error: ${e.toString()}");
       state = state.copyWith(
         status: AuthStatus.notAuthenticated,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: 'Error de conexión',
       );
     }
   }
@@ -107,20 +109,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await authRepository.verifyOtp(email, codigo);
 
-      log("OTP verification successful: $response");
+      log("OTP verification response: ${response.mensaje}");
 
-      // After successful OTP verification, redirect to login
-      state = state.copyWith(status: AuthStatus.notAuthenticated);
-
-      // Return the response message
-      return response is String
-          ? response
-          : 'Correo verificado correctamente ✅';
-    } on Exception catch (e) {
+      if (response.codigo == 201) {
+        state = state.copyWith(status: AuthStatus.notAuthenticated);
+        return response.mensaje;
+      } else {
+        state = state.copyWith(
+          status: AuthStatus.notAuthenticated,
+          errorMessage: response.mensaje,
+        );
+        throw Exception(response.mensaje);
+      }
+    } catch (e) {
       log("OTP verification error: ${e.toString()}");
       state = state.copyWith(
         status: AuthStatus.notAuthenticated,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: 'Error de conexión',
       );
       rethrow;
     }

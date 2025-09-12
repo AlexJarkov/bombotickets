@@ -71,7 +71,8 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/scanner/live-result',
       name: 'qr-scanner-live-result',
-      builder: (context, state) => const QrLiveScannerScreen(popWithResult: true),
+      builder: (context, state) =>
+          const QrLiveScannerScreen(popWithResult: true),
     ),
 
     // Selling flow

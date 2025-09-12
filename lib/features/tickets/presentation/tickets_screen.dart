@@ -5,21 +5,18 @@ import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
 import 'package:bombotickets/features/shared/widgets/glass_search_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:auto_size_text/auto_size_text.dart';
-import 'package:motion_toast/motion_toast.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../entities/ticket.dart';
+import '../entities/real_event.dart';
 import '../providers/marketplace_provider.dart';
+import '../providers/real_events_provider.dart';
+import '../widgets/real_event_card.dart';
 
 // Provider para manejar el estado de la pantalla de tickets
 final ticketsTabProvider = StateProvider<int>((ref) => 0);
-
-// Los tickets disponibles se cargan desde la API /marketplace
 
 class TicketsScreen extends ConsumerStatefulWidget {
   const TicketsScreen({super.key});
@@ -36,16 +33,7 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   @override
   void initState() {
     super.initState();
-    // Lee el tab inicial desde el provider (por si Home preselecciona Vender)
-    final initialIndex = ref.read(ticketsTabProvider);
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-      initialIndex: initialIndex.clamp(0, 1), // Solo 2 tabs ahora
-    );
-    _tabController.addListener(() {
-      ref.read(ticketsTabProvider.notifier).state = _tabController.index;
-    });
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -59,222 +47,350 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
   Widget build(BuildContext context) {
     final res = Responsive.of(context);
     final theme = Theme.of(context);
-    final reduce = MediaQuery.of(context).disableAnimations;
 
-    return GestureDetector(
-      onTap: () {
-        // Quitar focus al tocar fuera del input
-        FocusScope.of(context).unfocus();
-      },
-      child: AnimatedBackground(
-        style: BackgroundStyle.surface,
-        animated: !reduce,
-        intensity: 0.6,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Column(
-            children: [
-              // Header moderno sin AppBar
-              Padding(
-                padding: EdgeInsets.only(
-                  top: AppTheme.spacingLarge,
-                  left: AppTheme.spacingMedium,
-                  right: AppTheme.spacingMedium,
-                  bottom: AppTheme.spacingMedium,
-                ),
-                child: SizedBox.shrink(),
-              ),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // Fondo animado
+          const AnimatedBackground(child: SizedBox.expand()),
 
-              // Tabs con diseño original (indicador debajo, todo el ancho)
-              Container(
-                margin: EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingMedium,
-                ),
-                child: (() {
-                      final w = TabBar(
-                          controller: _tabController,
-                          dividerColor: Colors.transparent,
-                          isScrollable: false,
-                          labelPadding: EdgeInsets.zero,
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          indicator: UnderlineTabIndicator(
-                            borderSide: BorderSide(
-                              color: AppTheme.primaryColor,
-                              width: 3,
+          // Contenido principal
+          SafeArea(
+            child: Column(
+              children: [
+                // Header con título y búsqueda
+                _buildHeader(res, theme),
+
+                // Filtros de categoría
+                _buildCategoryFilters(res, theme),
+
+                // Contenido con pestañas
+                Expanded(
+                  child: DefaultTabController(
+                    length: 2,
+                    child: Column(
+                      children: [
+                        // Tab bar
+                        Container(
+                          margin: EdgeInsets.symmetric(horizontal: res.wp(4)),
+                          child: TabBar(
+                            controller: _tabController,
+                            labelColor: AppTheme.primaryColor,
+                            unselectedLabelColor: AppTheme.grey1,
+                            labelStyle: GoogleFonts.inter(
+                              fontSize: AppTheme.fontSizeBodyNormal,
+                              fontWeight: FontWeight.w600,
                             ),
-                            insets: EdgeInsets.zero,
-                          ),
-                          labelColor: AppTheme.primaryColor,
-                          unselectedLabelColor: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                          labelStyle: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          unselectedLabelStyle: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          tabs: [
-                            Tab(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.shopping_cart, size: 16),
-                                    SizedBox(width: 4),
-                                    Text('Comprar'),
-                                  ],
-                                ),
+                            unselectedLabelStyle: GoogleFonts.inter(
+                              fontSize: AppTheme.fontSizeBodyNormal,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            indicator: UnderlineTabIndicator(
+                              borderSide: BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 2,
+                              ),
+                              insets: EdgeInsets.symmetric(
+                                horizontal: res.wp(10),
                               ),
                             ),
-                            Tab(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.sell, size: 16),
-                                    SizedBox(width: 4),
-                                    Text('Vender'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      if (reduce) return w;
-                      return w
-                          .animate()
-                          .slideY(duration: 260.ms, begin: 0.16, end: 0)
-                          .fadeIn(duration: 260.ms);
-                    })(),
-              ),
+                            tabs: const [
+                              Tab(text: 'Comprar'),
+                              Tab(text: 'Mis Tickets'),
+                            ],
+                          ),
+                        ),
 
-              // Contenido de tabs
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildBuyTab(res, theme),
-                    _buildSellTab(res, theme),
-                  ],
+                        // Tab views
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildBuyTab(res, theme),
+                              _buildMyTicketsTab(res, theme),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(Responsive res, ThemeData theme) {
+    return Container(
+      padding: EdgeInsets.all(res.wp(4)),
+      child: Column(
+        children: [
+          // Título
+          Text(
+                'Tickets',
+                style: GoogleFonts.poppins(
+                  fontSize: AppTheme.fontSizeH1,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 600.ms)
+              .slideY(begin: -0.3, duration: 600.ms, curve: Curves.easeOutBack),
+
+          SizedBox(height: AppTheme.spacingMedium),
+
+          // Barra de búsqueda
+          GlassSearchBar(
+                controller: _searchController,
+                hintText: 'Buscar eventos...',
+                onChanged: (query) {
+                  // Podrías usar el query para filtrar aquí si implementas el provider
+                },
+              )
+              .animate()
+              .fadeIn(duration: 800.ms, delay: 200.ms)
+              .slideY(begin: -0.3, duration: 600.ms, curve: Curves.easeOutBack),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilters(Responsive res, ThemeData theme) {
+    final categoriesAsync = ref.watch(eventCategoriesProvider);
+    final selectedCategory = ref.watch(selectedCategoryProvider);
+
+    return categoriesAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (categories) => Container(
+        height: res.hp(6),
+        margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+        child: ListView.builder(
+          padding: EdgeInsets.symmetric(horizontal: res.wp(4)),
+          scrollDirection: Axis.horizontal,
+          itemCount: categories.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Container(
+                margin: EdgeInsets.only(right: res.wp(2)),
+                child: FilterChip(
+                  label: Text('Todos'),
+                  selected: selectedCategory == null,
+                  onSelected: (selected) {
+                    if (selected) {
+                      ref.read(selectedCategoryProvider.notifier).state = null;
+                    }
+                  },
+                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  checkmarkColor: AppTheme.primaryColor,
+                  labelStyle: TextStyle(
+                    color: selectedCategory == null
+                        ? AppTheme.primaryColor
+                        : AppTheme.grey1,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }
+
+            final category = categories[index - 1];
+            final isSelected = selectedCategory?.id == category.id;
+
+            return Container(
+              margin: EdgeInsets.only(right: res.wp(2)),
+              child: FilterChip(
+                label: Text(category.nombre),
+                selected: isSelected,
+                onSelected: (selected) {
+                  ref.read(selectedCategoryProvider.notifier).state = selected
+                      ? category
+                      : null;
+                },
+                selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                checkmarkColor: AppTheme.primaryColor,
+                labelStyle: TextStyle(
+                  color: isSelected ? AppTheme.primaryColor : AppTheme.grey1,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  // Tab de compra de tickets
   Widget _buildBuyTab(Responsive res, ThemeData theme) {
-    final availableEventsAsync = ref.watch(marketplaceTicketsProvider);
-    final width = MediaQuery.of(context).size.width;
-    final isWide = width >= 1000;
-    final crossAxisCount = isWide ? 2 : 1;
-    // Compute a deterministic tile height so titles can wrap to 2 lines
-    final double outerHPad = res.wp(4) * 2; // matches outer SingleChildScrollView padding
-    final double gridWidth = (width - outerHPad).clamp(200.0, width);
-    final double tileWidth = crossAxisCount == 1
-        ? gridWidth
-        : ((gridWidth - AppTheme.spacingNormal) / crossAxisCount);
-    final double imageHeight = tileWidth * 9 / 16; // 16:9 image
-    const double contentHeightAllowance = 240; // title(2l) + rows + CTA + paddings
-    final double mainTileExtent = imageHeight + contentHeightAllowance;
+    final eventsAsync = ref.watch(filteredRealEventsProvider);
 
-    return availableEventsAsync.when(
-      loading: () => _buildLoadingBuyTab(res, theme, crossAxisCount, isWide),
-      error: (err, stack) => _buildErrorBuyTab(res, theme, err),
-      data: (availableEvents) {
+    return eventsAsync.when(
+      loading: () => Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+        ),
+      ),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: res.dp(6), color: Colors.red),
+            SizedBox(height: AppTheme.spacingMedium),
+            Text(
+              'Error al cargar eventos',
+              style: GoogleFonts.inter(
+                fontSize: AppTheme.fontSizeBodyLarge,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            SizedBox(height: AppTheme.spacingSmall),
+            Text(
+              error.toString(),
+              style: GoogleFonts.inter(
+                fontSize: AppTheme.fontSizeBodyNormal,
+                color: AppTheme.grey1,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+      data: (events) {
+        if (events.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.event_busy, size: res.dp(8), color: AppTheme.grey1),
+                SizedBox(height: AppTheme.spacingMedium),
+                Text(
+                  'No hay eventos disponibles',
+                  style: GoogleFonts.poppins(
+                    fontSize: AppTheme.fontSizeBodyLarge,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: AppTheme.spacingSmall),
+                Text(
+                  'Intenta con otros filtros de búsqueda',
+                  style: GoogleFonts.inter(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    color: AppTheme.grey1,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         return SingleChildScrollView(
           padding: EdgeInsets.all(res.wp(4)),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Barra de búsqueda y filtros para compras
-              Row(
-                children: [
-                  Expanded(
-                    child: (() {
-                          final w = GlassSearchBar(
-                              controller: _searchController,
-                              hintText: 'Buscar eventos, artistas...',
-                              iconSize: res.dp(2.2),
-                              onChanged: (value) {
-                                // TODO: Implementar búsqueda local/servidor
-                              },
-                            );
-                          if (MediaQuery.of(context).disableAnimations) return w;
-                          return w
-                              .animate()
-                              .slideX(duration: 280.ms, begin: 0.14, end: 0)
-                              .fadeIn(duration: 280.ms);
-                        })(),
-                  ),
-
-                  SizedBox(width: AppTheme.spacingSmall),
-
-                  GlassCard(
-                    padding: EdgeInsets.all(AppTheme.spacingSmall),
-                    borderRadius: AppTheme.borderRadiusSmall,
-                    child: InkWell(
-                      onTap: () => _showFilterBottomSheet(context),
-                      borderRadius: BorderRadius.circular(
-                        AppTheme.borderRadiusSmall,
-                      ),
-                      child: Icon(
-                        Icons.tune_rounded,
-                        color: AppTheme.primaryColor,
-                        size: res.dp(2.4),
-                      ),
-                    ),
-                  ).animate(target: MediaQuery.of(context).disableAnimations ? 1 : 1).scale(duration: MediaQuery.of(context).disableAnimations ? 1.ms : 240.ms, delay: MediaQuery.of(context).disableAnimations ? 0.ms : 120.ms),
-                ],
-              ),
-
-              SizedBox(height: res.hp(2)),
-              Text(
-                'Eventos Disponibles',
-                style: TextStyle(
-                  fontSize: res.dp(2.2),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              SizedBox(height: res.hp(1.5)),
-
-              if (availableEvents.isEmpty)
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: res.hp(10)),
-                  child: Center(
-                    child: Text(
-                      'No hay tickets disponibles en este momento',
-                      style: TextStyle(
-                        fontSize: res.dp(1.6),
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
+            children: events
+                .asMap()
+                .entries
+                .map(
+                  (entry) =>
+                      RealEventCard(
+                            event: entry.value,
+                            onTap: () =>
+                                _showEventDetails(entry.value, res, theme),
+                          )
+                          .animate(
+                            delay: Duration(milliseconds: entry.key * 100),
+                          )
+                          .fadeIn(duration: 400.ms)
+                          .slideY(begin: 0.3, duration: 400.ms),
                 )
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: AppTheme.spacingNormal,
-                    mainAxisSpacing: AppTheme.spacingNormal,
-                    // Fix tile height to accommodate 2-line titles without overflow
-                    mainAxisExtent: mainTileExtent,
-                  ),
-                  itemCount: availableEvents.length,
-                  itemBuilder: (context, index) =>
-                      _buildMarketplaceEventCard(availableEvents[index], res, theme),
+                .toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMyTicketsTab(Responsive res, ThemeData theme) {
+    final myTicketsAsync = ref.watch(marketplaceTicketsProvider);
+
+    return myTicketsAsync.when(
+      loading: () => Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+        ),
+      ),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: res.dp(6), color: Colors.red),
+            SizedBox(height: AppTheme.spacingMedium),
+            Text(
+              'Error al cargar tickets',
+              style: GoogleFonts.inter(
+                fontSize: AppTheme.fontSizeBodyLarge,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+      data: (tickets) {
+        if (tickets.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.confirmation_num_outlined,
+                  size: res.dp(8),
+                  color: AppTheme.grey1,
                 ),
+                SizedBox(height: AppTheme.spacingMedium),
+                Text(
+                  'No tienes tickets',
+                  style: GoogleFonts.poppins(
+                    fontSize: AppTheme.fontSizeBodyLarge,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: AppTheme.spacingSmall),
+                Text(
+                  'Compra tickets en la pestaña "Comprar"',
+                  style: GoogleFonts.inter(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    color: AppTheme.grey1,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(res.wp(4)),
+          child: Column(
+            children: [
+              ...tickets
+                  .asMap()
+                  .entries
+                  .map(
+                    (entry) => _buildMyTicketCard(entry.value, res, theme)
+                        .animate(delay: Duration(milliseconds: entry.key * 100))
+                        .fadeIn(duration: 400.ms)
+                        .slideY(begin: 0.3, duration: 400.ms),
+                  )
+                  .toList(),
+              SizedBox(height: res.hp(4)),
+              // Tips para vendedores
+              _buildSellingTips(res, theme),
             ],
           ),
         );
@@ -282,367 +398,80 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
     );
   }
 
-  Widget _buildLoadingBuyTab(
+  Widget _buildMyTicketCard(
+    EventTicket ticket,
     Responsive res,
     ThemeData theme,
-    int crossAxisCount,
-    bool isWide,
   ) {
-    final width = MediaQuery.of(context).size.width;
-    final double outerHPad = res.wp(4) * 2;
-    final double gridWidth = (width - outerHPad).clamp(200.0, width);
-    final double tileWidth = crossAxisCount == 1
-        ? gridWidth
-        : ((gridWidth - AppTheme.spacingNormal) / crossAxisCount);
-    final double imageHeight = tileWidth * 9 / 16;
-    const double contentHeightAllowance = 240;
-    final double mainTileExtent = imageHeight + contentHeightAllowance;
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(res.wp(4)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: GlassCard(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingNormal,
-                    vertical: AppTheme.spacingSmall,
-                  ),
-                  child: Container(
-                    height: res.hp(5),
-                    color: Colors.transparent,
-                  ),
-                ),
-              ),
-              SizedBox(width: AppTheme.spacingSmall),
-              GlassCard(
-                padding: EdgeInsets.all(AppTheme.spacingSmall),
-                child: Icon(Icons.tune_rounded, color: AppTheme.primaryColor),
-              ),
-            ],
-          ),
-          SizedBox(height: res.hp(2)),
-          Text(
-            'Eventos Disponibles',
-            style: TextStyle(
-              fontSize: res.dp(2.2),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: res.hp(1.5)),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: AppTheme.spacingNormal,
-              mainAxisSpacing: AppTheme.spacingNormal,
-              // Match the real card height during loading, too
-              mainAxisExtent: mainTileExtent,
-            ),
-            itemCount: 4,
-            itemBuilder: (context, index) => GlassCard(
-              padding: EdgeInsets.all(AppTheme.spacingNormal),
-              child: Row(
-                children: [
-                  Container(
-                    width: res.wp(25),
-                    height: res.wp(25),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant,
-                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                    ),
-                  ),
-                  SizedBox(width: AppTheme.spacingNormal),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: res.hp(2),
-                          color: theme.colorScheme.surfaceVariant,
-                        ),
-                        SizedBox(height: AppTheme.spacingSmall),
-                        Container(
-                          height: res.hp(2),
-                          width: res.wp(30),
-                          color: theme.colorScheme.surfaceVariant,
-                        ),
-                        SizedBox(height: AppTheme.spacingSmall),
-                        Container(
-                          height: res.hp(2),
-                          width: res.wp(20),
-                          color: theme.colorScheme.surfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorBuyTab(Responsive res, ThemeData theme, Object err) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(res.wp(4)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(height: res.hp(10)),
-          Icon(Icons.error_outline, color: theme.colorScheme.error, size: res.dp(6)),
-          SizedBox(height: res.hp(2)),
-          Text(
-            'No se pudieron cargar los tickets',
-            style: TextStyle(
-              fontSize: res.dp(1.8),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: res.hp(1)),
-          Text(
-            err.toString(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-          SizedBox(height: res.hp(2)),
-          ElevatedButton.icon(
-            onPressed: () => ref.refresh(marketplaceTicketsProvider),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Tab de venta de tickets
-  Widget _buildSellTab(Responsive res, ThemeData theme) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(res.wp(4)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Vender Tickets',
-            style: TextStyle(
-              fontSize: res.dp(2.2),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          SizedBox(height: res.hp(1.5)),
-
-          AppCard(
-            padding: EdgeInsets.all(res.wp(4)),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.sell_outlined,
-                  size: res.dp(6),
-                  color: AppTheme.primaryColor,
-                ),
-                SizedBox(height: res.hp(2)),
-                Text(
-                  'Vende tus tickets',
-                  style: TextStyle(
-                    fontSize: res.dp(2),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: res.hp(1)),
-                Text(
-                  'Publica tus tickets no utilizados y recibe dinero por ellos de forma segura.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: res.dp(1.5),
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                SizedBox(height: res.hp(2.5)),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => context.push('/tickets/sell/scan'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Publicar Ticket'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: res.hp(1.5)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: res.hp(3)),
-
-          Text(
-            'Tips para vender',
-            style: TextStyle(
-              fontSize: res.dp(1.8),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          SizedBox(height: res.hp(1.5)),
-
-          _buildTipCard(
-            'Precio competitivo',
-            'Revisa precios similares antes de publicar',
-            Icons.trending_up,
-            res,
-            theme,
-          ),
-          _buildTipCard(
-            'Información completa',
-            'Incluye todos los detalles del evento',
-            Icons.info_outline,
-            res,
-            theme,
-          ),
-          _buildTipCard(
-            'Responde rápido',
-            'Contesta mensajes pronto para cerrar la venta',
-            Icons.chat_bubble_outline,
-            res,
-            theme,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEventCard(EventTicket event, Responsive res, ThemeData theme) {
     return GlassCard(
       margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
       padding: EdgeInsets.all(AppTheme.spacingNormal),
       animated: true,
       animationDuration: const Duration(milliseconds: 400),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Imagen del evento (usa red de imágenes si está disponible)
+              // QR Code placeholder
               Container(
-                width: res.wp(25),
-                height: res.wp(25),
+                width: res.wp(20),
+                height: res.wp(20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                  child: CachedNetworkImage(
-                    imageUrl: event.imageUrl,
-                    fit: BoxFit.cover,
-                    fadeInDuration: const Duration(milliseconds: 200),
-                    placeholder: (context, url) => Container(
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                      ),
-                      child: Icon(
-                        Icons.event_rounded,
-                        size: res.dp(4),
-                        color: Colors.white,
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                      ),
-                      child: Icon(
-                        Icons.event_rounded,
-                        size: res.dp(4),
-                        color: Colors.white,
-                      ),
-                    ),
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(
+                    AppTheme.borderRadiusSmall,
                   ),
+                  border: Border.all(
+                    color: AppTheme.grey1.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Icon(
+                  Icons.qr_code,
+                  size: res.dp(4),
+                  color: AppTheme.grey1,
                 ),
               ),
 
               SizedBox(width: AppTheme.spacingNormal),
 
-              // Información del evento
+              // Información del ticket
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AutoSizeText(
-                      event.title,
+                    Text(
+                      ticket.title,
                       style: GoogleFonts.poppins(
                         fontSize: AppTheme.fontSizeBodyLarge,
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
                       ),
                       maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: AppTheme.spacingSmall),
-                    AutoSizeText(
-                      event.artist,
+
+                    SizedBox(height: AppTheme.spacingSmall / 2),
+
+                    Text(
+                      ticket.venue,
                       style: GoogleFonts.inter(
                         fontSize: AppTheme.fontSizeBodyNormal,
                         color: AppTheme.grey1,
-                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: AppTheme.spacingSmall),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_rounded,
-                          size: res.dp(1.6),
-                          color: AppTheme.grey1,
-                        ),
-                        SizedBox(width: AppTheme.spacingSmall),
-                        Expanded(
-                          child: AutoSizeText(
-                            event.venue,
-                            style: GoogleFonts.inter(
-                              fontSize: AppTheme.fontSizeBodyNormal,
-                              color: AppTheme.grey1,
-                            ),
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppTheme.spacingSmall),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_rounded,
-                          size: res.dp(1.6),
-                          color: AppTheme.grey1,
-                        ),
-                        SizedBox(width: AppTheme.spacingSmall),
-                        AutoSizeText(
-                          '${event.date.day}/${event.date.month}/${event.date.year}',
-                          style: GoogleFonts.inter(
-                            fontSize: AppTheme.fontSizeBodyNormal,
-                            color: AppTheme.grey1,
-                          ),
-                          maxLines: 1,
-                        ),
-                      ],
+
+                    SizedBox(height: AppTheme.spacingSmall / 2),
+
+                    Text(
+                      '${ticket.date.day}/${ticket.date.month}/${ticket.date.year}',
+                      style: GoogleFonts.inter(
+                        fontSize: AppTheme.fontSizeBodyNormal,
+                        color: AppTheme.grey1,
+                      ),
                     ),
                   ],
                 ),
@@ -652,330 +481,103 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
 
           SizedBox(height: AppTheme.spacingMedium),
 
-          // Precio y botón de compra
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (event.hasDiscount) ...[
-                    AutoSizeText(
-                      '\$${event.originalPrice.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}',
-                      style: GoogleFonts.inter(
-                        fontSize: AppTheme.fontSizeBodyNormal,
-                        decoration: TextDecoration.lineThrough,
-                        color: AppTheme.grey1,
-                      ),
-                      maxLines: 1,
-                    ),
-                    SizedBox(height: AppTheme.spacingSmall / 2),
-                  ],
-                  AutoSizeText(
-                    '\$${event.price.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}',
-                    style: GoogleFonts.poppins(
-                      fontSize: AppTheme.fontSizeBodyLarge,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                    ),
-                    maxLines: 1,
-                  ),
-                  if (event.isResale)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingSmall,
-                        vertical: AppTheme.spacingSmall / 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.borderRadiusSmall,
-                        ),
-                      ),
-                      child: AutoSizeText(
-                        'REVENTA',
-                        style: GoogleFonts.inter(
-                          fontSize: AppTheme.fontSizeBodyNormal,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.orange,
-                        ),
-                        maxLines: 1,
-                      ),
-                    ),
-                ],
-              ),
-              ElevatedButton(
-                onPressed: () => _showBuyConfirmation(event, res, theme),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingMedium,
-                    vertical: AppTheme.spacingSmall,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      AppTheme.borderRadiusSmall,
-                    ),
-                  ),
+          // Estado del ticket
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingSmall,
+              vertical: AppTheme.spacingSmall / 2,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: res.dp(1.6),
+                  color: Colors.green,
                 ),
-                child: AutoSizeText(
-                  'Comprar',
+                SizedBox(width: 4),
+                Text(
+                  'Válido',
                   style: GoogleFonts.inter(
                     fontSize: AppTheme.fontSizeBodyNormal,
                     fontWeight: FontWeight.w600,
+                    color: Colors.green,
                   ),
-                  maxLines: 1,
                 ),
-              ),
-            ],
-          ),
-
-          if (event.availableTickets <= 5) ...[
-            SizedBox(height: AppTheme.spacingSmall),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: res.wp(3),
-                vertical: res.hp(0.5),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(res.wp(1)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.warning_amber_outlined,
-                    size: res.dp(1.6),
-                    color: Colors.red,
-                  ),
-                  SizedBox(width: res.wp(1)),
-                  Text(
-                    'Solo quedan ${event.availableTickets} tickets',
-                    style: TextStyle(
-                      fontSize: res.dp(1.2),
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  // New compact marketplace card with full-width image on top
-  Widget _buildMarketplaceEventCard(
-    EventTicket event,
-    Responsive res,
-    ThemeData theme,
-  ) {
-    return GlassCard(
-      margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
-      padding: EdgeInsets.zero,
-      borderRadius: AppTheme.borderRadiusSmall,
-      animated: true,
-      animationDuration: const Duration(milliseconds: 400),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Image spans horizontally across the card
-          ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(AppTheme.borderRadiusSmall),
-              topRight: Radius.circular(AppTheme.borderRadiusSmall),
-            ),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: CachedNetworkImage(
-                imageUrl: event.imageUrl,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 200),
-                placeholder: (context, url) => Container(
-                  decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
-                  child: Icon(Icons.event_rounded, size: res.dp(4), color: Colors.white),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
-                  child: Icon(Icons.event_rounded, size: res.dp(4), color: Colors.white),
-                ),
-              ),
-            ),
+  Widget _buildSellingTips(Responsive res, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tips para vender',
+          style: GoogleFonts.poppins(
+            fontSize: AppTheme.fontSizeBodyLarge,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
           ),
+        ),
+        SizedBox(height: AppTheme.spacingMedium),
+        _buildTipCard(
+          'Precio competitivo',
+          'Revisa precios similares antes de publicar',
+          Icons.attach_money_rounded,
+          res,
+          theme,
+        ),
+        _buildTipCard(
+          'Información completa',
+          'Incluye todos los detalles del evento',
+          Icons.info_outline,
+          res,
+          theme,
+        ),
+        _buildTipCard(
+          'Respuesta rápida',
+          'Contesta mensajes pronto para cerrar la venta',
+          Icons.speed_rounded,
+          res,
+          theme,
+        ),
+      ],
+    );
+  }
 
-          // Compressed content
-          Padding(
-            padding: EdgeInsets.all(AppTheme.spacingNormal),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: AutoSizeText(
-                        event.title,
-                        style: GoogleFonts.poppins(
-                          fontSize: AppTheme.fontSizeBodyLarge,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (event.isResale) ...[
-                      SizedBox(width: AppTheme.spacingSmall),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingSmall,
-                          vertical: AppTheme.spacingSmall / 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                        ),
-                        child: Text(
-                          'REVENTA',
-                          style: GoogleFonts.inter(
-                            fontSize: AppTheme.fontSizeBodyNormal,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-
-                SizedBox(height: AppTheme.spacingSmall / 1.5),
-
-                if (event.artist.isNotEmpty)
-                  Text(
-                    event.artist,
-                    style: GoogleFonts.inter(
-                      fontSize: AppTheme.fontSizeBodyNormal,
-                      color: AppTheme.grey1,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                SizedBox(height: AppTheme.spacingSmall / 1.5),
-
-                Row(
-                  children: [
-                    Icon(Icons.location_on_rounded, size: res.dp(1.6), color: AppTheme.grey1),
-                    SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        event.venue,
-                        style: GoogleFonts.inter(
-                          fontSize: AppTheme.fontSizeBodyNormal,
-                          color: AppTheme.grey1,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.calendar_today_rounded, size: res.dp(1.6), color: AppTheme.grey1),
-                    SizedBox(width: 4),
-                    Text(
-                      '${event.date.day}/${event.date.month}/${event.date.year}',
-                      style: GoogleFonts.inter(
-                        fontSize: AppTheme.fontSizeBodyNormal,
-                        color: AppTheme.grey1,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: AppTheme.spacingSmall),
-
-                Row(
-                  children: [
-                    if (event.hasDiscount) ...[
-                      Text(
-                        '\$${event.originalPrice.toString().replaceAllMapped(RegExp(r'(\\d)(?=(\\d{3})+(?!\\d))'), (m) => '${m[1]}.')}',
-                        style: GoogleFonts.inter(
-                          fontSize: AppTheme.fontSizeBodyNormal,
-                          decoration: TextDecoration.lineThrough,
-                          color: AppTheme.grey1,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                    ],
-                    Text(
-                      '\$${event.price.toString().replaceAllMapped(RegExp(r'(\\d)(?=(\\d{3})+(?!\\d))'), (m) => '${m[1]}.')}',
-                      style: GoogleFonts.poppins(
-                        fontSize: AppTheme.fontSizeBodyLarge,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    const Spacer(),
-                    ElevatedButton(
-                      onPressed: () => _showBuyConfirmation(event, res, theme),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingMedium,
-                          vertical: AppTheme.spacingSmall,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-                        ),
-                      ),
-                      child: Text(
-                        'Comprar',
-                        style: GoogleFonts.inter(
-                          fontSize: AppTheme.fontSizeBodyNormal,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                if (event.availableTickets <= 5) ...[
-                  SizedBox(height: AppTheme.spacingSmall),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: res.wp(3),
-                      vertical: res.hp(0.5),
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(res.wp(1)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.warning_amber_outlined, size: res.dp(1.6), color: Colors.red),
-                        SizedBox(width: res.wp(1)),
-                        Text(
-                          'Solo quedan ${event.availableTickets} tickets',
-                          style: TextStyle(
-                            fontSize: res.dp(1.2),
-                            color: Colors.red,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
+  void _showEventDetails(RealEvent event, Responsive res, ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(event.nombre),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Categoría: ${event.categoria.nombre}'),
+            const SizedBox(height: 8),
+            Text('Organizador: ${event.organizador.nombre}'),
+            const SizedBox(height: 8),
+            Text('Lugar: ${event.lugar}, ${event.ciudad}'),
+            const SizedBox(height: 8),
+            Text('Fecha: ${event.fecha}'),
+            const SizedBox(height: 8),
+            Text('Máximo tickets: ${event.maxTickets}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
           ),
         ],
       ),
@@ -995,12 +597,12 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(res.wp(2)),
+            padding: EdgeInsets.all(res.wp(2.5)),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(res.wp(2)),
             ),
-            child: Icon(icon, size: res.dp(2.5), color: AppTheme.primaryColor),
+            child: Icon(icon, size: res.dp(2.2), color: AppTheme.primaryColor),
           ),
           SizedBox(width: res.wp(3)),
           Expanded(
@@ -1009,178 +611,24 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen>
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: res.dp(1.6),
+                  style: GoogleFonts.inter(
+                    fontSize: res.dp(1.8),
                     fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
-                SizedBox(height: res.hp(0.5)),
+                SizedBox(height: res.hp(0.3)),
                 Text(
                   description,
-                  style: TextStyle(
-                    fontSize: res.dp(1.3),
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  style: GoogleFonts.inter(
+                    fontSize: res.dp(1.6),
+                    color: AppTheme.grey1,
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showFilterBottomSheet(BuildContext context) {
-    final res = Responsive.of(context);
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(res.wp(6)),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(res.wp(6))),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: res.wp(12),
-              height: res.hp(0.5),
-              decoration: BoxDecoration(
-                color: theme.dividerColor.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(res.wp(2)),
-              ),
-            ),
-            SizedBox(height: res.hp(2)),
-            Text(
-              'Filtros',
-              style: TextStyle(
-                fontSize: res.dp(2.2),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: res.hp(2)),
-            Text('Filtros próximamente'),
-            SizedBox(height: res.hp(2)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showBuyConfirmation(
-    EventTicket event,
-    Responsive res,
-    ThemeData theme,
-  ) {
-    HapticFeedback.lightImpact();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar Compra'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('¿Confirmas la compra de este ticket?'),
-            SizedBox(height: res.hp(1)),
-            Text(
-              event.title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Precio: \$${event.price.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}',
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              MotionToast(
-                icon: Icons.check_circle_rounded,
-                primaryColor: AppTheme.successColorLight,
-                secondaryColor: Colors.white,
-                title: Text(
-                  'Compra exitosa',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                description: Text(
-                  'El ticket se agregó a tu lista',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
-                  ),
-                ),
-                toastDuration: const Duration(seconds: 3),
-                width: 320,
-                height: 80,
-                borderRadius: 16,
-              ).show(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Comprar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSellTicketBottomSheet(
-    BuildContext context,
-    Responsive res,
-    ThemeData theme,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(res.wp(6)),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(res.wp(6))),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: res.wp(12),
-              height: res.hp(0.5),
-              decoration: BoxDecoration(
-                color: theme.dividerColor.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(res.wp(2)),
-              ),
-            ),
-            SizedBox(height: res.hp(2)),
-            Text(
-              'Publicar Ticket',
-              style: TextStyle(
-                fontSize: res.dp(2.2),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: res.hp(2)),
-            Text('Formulario de venta próximamente'),
-            SizedBox(height: res.hp(2)),
-          ],
-        ),
       ),
     );
   }

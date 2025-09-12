@@ -99,6 +99,22 @@ class MyTicket {
     required this.seatInfo,
   });
 
+  factory MyTicket.fromJson(Map<String, dynamic> json) {
+    return MyTicket(
+      id: json['id'] as String,
+      eventTitle: json['eventTitle'] as String,
+      venue: json['venue'] as String,
+      date: DateTime.parse(json['date'] as String),
+      status: TicketStatus.values.firstWhere(
+        (status) => status.name == json['status'],
+        orElse: () => TicketStatus.activo,
+      ),
+      purchasePrice: json['purchasePrice'] as int,
+      qrData: json['qrData'] as String,
+      seatInfo: json['seatInfo'] as String,
+    );
+  }
+
   bool get canSell =>
       status == TicketStatus.activo && date.isAfter(DateTime.now());
   bool get isExpired => date.isBefore(DateTime.now());

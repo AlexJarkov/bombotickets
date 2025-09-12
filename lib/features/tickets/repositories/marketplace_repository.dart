@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:bombotickets/config/environment.dart';
 import '../entities/ticket.dart';
 
-/// Repository to fetch marketplace listings (tickets for sale)
 class MarketplaceRepository {
   final Dio _dio = Dio(
     BaseOptions(
@@ -25,7 +24,8 @@ class MarketplaceRepository {
         '/marketplace',
         options: Options(
           headers: {
-            if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
             'Accept': 'application/json, text/plain, */*',
           },
         ),
@@ -70,7 +70,9 @@ class MarketplaceRepository {
       final serverMsg = e.response?.data is Map
           ? (e.response!.data['message'] ?? e.response!.data['error'])
           : e.message;
-      throw Exception('Error al cargar marketplace ($code): ${serverMsg ?? 'desconocido'}');
+      throw Exception(
+        'Error al cargar marketplace ($code): ${serverMsg ?? 'desconocido'}',
+      );
     }
   }
 
@@ -86,9 +88,11 @@ class MarketplaceRepository {
       return null;
     }
 
-    String id = g<String>(['id', 'uuid', 'listingId', 'ticketId']) ??
+    String id =
+        g<String>(['id', 'uuid', 'listingId', 'ticketId']) ??
         'listing-${DateTime.now().microsecondsSinceEpoch}-${raw.hashCode}';
-    String title = g<String>(['title', 'titulo', 'eventTitle', 'evento']) ?? 'Evento';
+    String title =
+        g<String>(['title', 'titulo', 'eventTitle', 'evento']) ?? 'Evento';
     String artist = g<String>(['artist', 'artista', 'performer']) ?? '';
     String venue = g<String>(['venue', 'recinto', 'lugar']) ?? '';
 
@@ -106,17 +110,31 @@ class MarketplaceRepository {
       } catch (_) {}
     }
 
-    int price = _asInt(g(['precioOfertado', 'price', 'precio', 'precio_ofertado'])) ?? 0;
-    int originalPrice = _asInt(g(['precioOriginal', 'original_price', 'precio_referencia', 'precioBase'])) ?? price;
+    int price =
+        _asInt(g(['precioOfertado', 'price', 'precio', 'precio_ofertado'])) ??
+        0;
+    int originalPrice =
+        _asInt(
+          g([
+            'precioOriginal',
+            'original_price',
+            'precio_referencia',
+            'precioBase',
+          ]),
+        ) ??
+        price;
 
-    String imageUrl = g<String>(['imageUrl', 'imagen', 'image', 'poster', 'banner']) ?? '';
+    String imageUrl =
+        g<String>(['imageUrl', 'imagen', 'image', 'poster', 'banner']) ?? '';
     if (imageUrl.isEmpty) {
       // Use a generic placeholder if none provided
       imageUrl = 'https://picsum.photos/600/400?random=${id.hashCode & 0xFFFF}';
     }
 
     String category = g<String>(['category', 'categoria']) ?? 'General';
-    int availableTickets = _asInt(g(['cantidad', 'availableTickets', 'disponibles', 'stock'])) ?? 1;
+    int availableTickets =
+        _asInt(g(['cantidad', 'availableTickets', 'disponibles', 'stock'])) ??
+        1;
     bool isResale = g<bool>(['isResale', 'is_resale', 'reventa']) ?? true;
 
     // Adapt for marketplace payload structure with nested ticket_ofertado/evento
@@ -158,7 +176,9 @@ class MarketplaceRepository {
               date = DateFormat('dd/MM/yyyy').parse(evFecha);
             } catch (_) {
               // As a last resort, attempt ISO parse
-              try { date = DateTime.parse(evFecha); } catch (_) {}
+              try {
+                date = DateTime.parse(evFecha);
+              } catch (_) {}
             }
           }
         }

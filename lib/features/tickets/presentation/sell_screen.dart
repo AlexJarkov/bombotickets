@@ -53,26 +53,51 @@ class ScannedTicketInfo {
       }
 
       String? title = pick<String>([
-        'title', 'event', 'eventName', 'name', 'evento', 'titulo'
+        'title',
+        'event',
+        'eventName',
+        'name',
+        'evento',
+        'titulo',
       ]);
       String? venue = pick<String>([
-        'venue', 'location', 'place', 'stadium', 'recinto'
+        'venue',
+        'location',
+        'place',
+        'stadium',
+        'recinto',
       ]);
       String? category = pick<String>([
-        'category', 'tier', 'type', 'zona', 'sector', 'seccion'
+        'category',
+        'tier',
+        'type',
+        'zona',
+        'sector',
+        'seccion',
       ]);
       String? seat = pick<String>([
-        'seat', 'asiento', 'butaca', 'filaAsiento', 'localidad'
+        'seat',
+        'asiento',
+        'butaca',
+        'filaAsiento',
+        'localidad',
       ]);
       String? imageUrl = pick<String>(['image', 'imageUrl', 'image_url']);
 
       double? originalPrice;
       final priceVal = pick<dynamic>([
-        'originalPrice', 'original_price', 'price', 'precio', 'valor', 'amount'
+        'originalPrice',
+        'original_price',
+        'price',
+        'precio',
+        'valor',
+        'amount',
       ]);
       if (priceVal is num) originalPrice = priceVal.toDouble();
       if (priceVal is String) {
-        final cleaned = priceVal.replaceAll(RegExp(r'[^0-9.,-]'), '').replaceAll(',', '.');
+        final cleaned = priceVal
+            .replaceAll(RegExp(r'[^0-9.,-]'), '')
+            .replaceAll(',', '.');
         originalPrice = double.tryParse(cleaned);
       }
 
@@ -110,7 +135,8 @@ class SellTicketDetailsScreen extends StatefulWidget {
   const SellTicketDetailsScreen({super.key, required this.ticketQr});
 
   @override
-  State<SellTicketDetailsScreen> createState() => _SellTicketDetailsScreenState();
+  State<SellTicketDetailsScreen> createState() =>
+      _SellTicketDetailsScreenState();
 }
 
 class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
@@ -152,7 +178,9 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
             physics: const BouncingScrollPhysics(),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + AppTheme.spacingMedium,
+              bottom:
+                  MediaQuery.of(context).viewInsets.bottom +
+                  AppTheme.spacingMedium,
             ),
             child: Padding(
               padding: EdgeInsets.all(AppTheme.spacingMedium),
@@ -184,128 +212,150 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
                   SizedBox(height: AppTheme.spacingLarge),
 
                   // Ticket info card removed by request.
-
                   SizedBox(height: AppTheme.spacingLarge),
 
                   AppCard(
-                    padding: EdgeInsets.all(AppTheme.spacingLarge),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_submitError != null) ...[
-                          _ErrorBanner(message: _submitError!),
-                          const SizedBox(height: 12),
-                        ],
-                        Text('Precio de Reventa',
-                            style: GoogleFonts.inter(
-                              fontSize: res.dp(1.8),
-                              fontWeight: FontWeight.w700,
-                            )),
-                        const SizedBox(height: 16),
-                        if (_info?.originalPrice != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Precio Original: \$${_formatPrice(_info!.originalPrice!)}',
+                        padding: EdgeInsets.all(AppTheme.spacingLarge),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_submitError != null) ...[
+                              _ErrorBanner(message: _submitError!),
+                              const SizedBox(height: 12),
+                            ],
+                            Text(
+                              'Precio de Reventa',
                               style: GoogleFonts.inter(
-                                fontSize: res.dp(1.35),
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withOpacity(0.7),
+                                fontSize: res.dp(1.8),
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: CustomInputField(
-                                controller: _qtyCtrl,
-                                label: 'Cantidad',
-                                keyboardType: TextInputType.number,
-                                prefixIcon: Icons.confirmation_number_outlined,
-                                isFormPosted: _formPosted,
-                                errorMessage: _qtyError,
-                                focusedBorder: true,
-                                onChanged: (_) {
-                                  if (_formPosted) setState(() { _qtyError = null; _submitError = null; });
-                                },
+                            const SizedBox(height: 16),
+                            if (_info?.originalPrice != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Text(
+                                  'Precio Original: \$${_formatPrice(_info!.originalPrice!)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: res.dp(1.35),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
                               ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: CustomInputField(
+                                    controller: _qtyCtrl,
+                                    label: 'Cantidad',
+                                    keyboardType: TextInputType.number,
+                                    prefixIcon:
+                                        Icons.confirmation_number_outlined,
+                                    isFormPosted: _formPosted,
+                                    errorMessage: _qtyError,
+                                    focusedBorder: true,
+                                    onChanged: (_) {
+                                      if (_formPosted)
+                                        setState(() {
+                                          _qtyError = null;
+                                          _submitError = null;
+                                        });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: CustomInputField(
+                                    controller: _priceCtrl,
+                                    label: 'Precio unitario',
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    prefixIcon: Icons.attach_money_rounded,
+                                    isFormPosted: _formPosted,
+                                    errorMessage: _priceError,
+                                    focusedBorder: true,
+                                    onChanged: (_) {
+                                      if (_formPosted)
+                                        setState(() {
+                                          _priceError = null;
+                                          _submitError = null;
+                                        });
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: CustomInputField(
-                                controller: _priceCtrl,
-                                label: 'Precio unitario',
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                prefixIcon: Icons.attach_money_rounded,
-                                isFormPosted: _formPosted,
-                                errorMessage: _priceError,
-                                focusedBorder: true,
-                                onChanged: (_) {
-                                  if (_formPosted) setState(() { _priceError = null; _submitError = null; });
-                                },
-                              ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _PresetButton(
+                                    label: '-10%',
+                                    onTap: () => _applyPreset(-0.10),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _PresetButton(
+                                    label: 'Precio Original',
+                                    onTap: () => _applyOriginal(),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _PresetButton(
+                                    label: '+10%',
+                                    onTap: () => _applyPreset(0.10),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _PresetButton(
-                                label: '-10%',
-                                onTap: () => _applyPreset(-0.10),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _PresetButton(
-                                label: 'Precio Original',
-                                onTap: () => _applyOriginal(),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _PresetButton(
-                                label: '+10%',
-                                onTap: () => _applyPreset(0.10),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _submitting ? null : _submit,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: _submitting ? null : _submit,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                ),
+                                child: _submitting
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Continuar con la Reventa'),
+                              ),
                             ),
-                            child: _submitting
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  )
-                                : const Text('Continuar con la Reventa'),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Center(
-                          child: Text(
-                            'Comisión de la app: 5% del precio final',
-                            style: GoogleFonts.inter(
-                              fontSize: res.dp(1.2),
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: Text(
+                                'Comisión de la app: 5% del precio final',
+                                style: GoogleFonts.inter(
+                                  fontSize: res.dp(1.2),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ).animate().fadeIn(duration: 260.ms, delay: 80.ms).slideY(begin: 0.08, end: 0),
+                      )
+                      .animate()
+                      .fadeIn(duration: 260.ms, delay: 80.ms)
+                      .slideY(begin: 0.08, end: 0),
                 ],
               ),
             ),
@@ -323,7 +373,9 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
   String _formatPrice(double v) {
     final s = v.toStringAsFixed(0);
     final withSep = s.replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    );
     return withSep;
   }
 
@@ -374,7 +426,9 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
       _priceCtrl.text = newVal.toStringAsFixed(0);
       return;
     }
-    final current = double.tryParse(_priceCtrl.text.trim().replaceAll(',', '.'));
+    final current = double.tryParse(
+      _priceCtrl.text.trim().replaceAll(',', '.'),
+    );
     if (current == null) return;
     final newVal = (current * (1 + pct)).clamp(0, double.infinity);
     _priceCtrl.text = newVal.toStringAsFixed(0);
@@ -461,7 +515,10 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
     if (msg.contains('repetido') || msg.contains('mismo ticket')) {
       return 'Ese ticket ya fue agregado a la solicitud.';
     }
-    if (msg.contains('no válido') || msg.contains('estado no valido') || msg.contains('en_venta') || msg.contains('usado')) {
+    if (msg.contains('no válido') ||
+        msg.contains('estado no valido') ||
+        msg.contains('en_venta') ||
+        msg.contains('usado')) {
       return 'El ticket no está disponible para publicar (ya en venta o usado).';
     }
     return 'No pudimos publicar este ticket. Verifica los datos y vuelve a intentar.';
@@ -507,7 +564,10 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: GoogleFonts.inter(color: Colors.red.shade800, fontWeight: FontWeight.w600),
+              style: GoogleFonts.inter(
+                color: Colors.red.shade800,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -573,47 +633,58 @@ class _SellTicketScanScreenState extends State<SellTicketScanScreen> {
                   SizedBox(height: AppTheme.spacingLarge),
 
                   AppCard(
-                    padding: EdgeInsets.all(AppTheme.spacingLarge),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.sell_outlined,
-                          size: res.dp(6),
-                          color: AppTheme.primaryColor,
-                        ),
-                        const SizedBox(height: 8),
-                        AutoSizeText(
-                          'Escanea el QR del ticket que quieres vender',
-                          maxLines: 1,
-                          style: GoogleFonts.inter(
-                            fontSize: res.dp(1.8),
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
+                        padding: EdgeInsets.all(AppTheme.spacingLarge),
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: FilledButton.tonalIcon(
-                                onPressed: _loading ? null : _scanWithCamera,
-                                icon: const Icon(Icons.qr_code_scanner_rounded),
-                                label: const Text('Usar cámara'),
-                              ),
+                            Icon(
+                              Icons.sell_outlined,
+                              size: res.dp(6),
+                              color: AppTheme.primaryColor,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _loading ? null : _scanFromGallery,
-                                icon: const Icon(Icons.photo_library_rounded),
-                                label: const Text('Desde galería'),
+                            const SizedBox(height: 8),
+                            AutoSizeText(
+                              'Escanea el QR del ticket que quieres vender',
+                              maxLines: 1,
+                              style: GoogleFonts.inter(
+                                fontSize: res.dp(1.8),
+                                fontWeight: FontWeight.w600,
                               ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton.tonalIcon(
+                                    onPressed: _loading
+                                        ? null
+                                        : _scanWithCamera,
+                                    icon: const Icon(
+                                      Icons.qr_code_scanner_rounded,
+                                    ),
+                                    label: const Text('Usar cámara'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: _loading
+                                        ? null
+                                        : _scanFromGallery,
+                                    icon: const Icon(
+                                      Icons.photo_library_rounded,
+                                    ),
+                                    label: const Text('Desde galería'),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ).animate().fadeIn(duration: 260.ms).slideY(begin: 0.08, end: 0),
+                      )
+                      .animate()
+                      .fadeIn(duration: 260.ms)
+                      .slideY(begin: 0.08, end: 0),
                 ],
               ),
             ),
@@ -646,7 +717,10 @@ class _SellTicketScanScreenState extends State<SellTicketScanScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al leer imagen: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error al leer imagen: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
