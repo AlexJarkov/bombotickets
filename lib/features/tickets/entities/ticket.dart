@@ -161,6 +161,53 @@ class MarketplaceOffer {
     );
   }
 
+  // Nuevo método para parsear la respuesta de la API de mis ventas
+  factory MarketplaceOffer.fromApiResponse(Map<String, dynamic> json) {
+    return MarketplaceOffer(
+      id: json['id'] as int,
+      precioOfertado: (json['precio'] as num).toDouble(),
+      statusOferta: _parseOfferStatus(json['estado'] as String),
+      fechaOferta:
+          DateTime.now(), // La API no devuelve fecha, usar actual por ahora
+      fechaRespuesta: null, // La API no devuelve esta fecha
+      userOfertante: UserOfertante(
+        id: 0, // No disponible en la respuesta
+        nombres: 'Usuario', // No disponible en la respuesta
+        apellidoP: '', // No disponible en la respuesta
+        apellidoM: '', // No disponible en la respuesta
+        email: '', // No disponible en la respuesta
+        verificado: false, // No disponible en la respuesta
+        staff: false, // No disponible en la respuesta
+      ),
+      ticketOfertado: TicketInfo(
+        id: json['id'] as int,
+        token: '', // No disponible en la respuesta
+        evento: EventInfo(
+          eventoId: 0, // No disponible en la respuesta
+          nombre: json['eventoNombre'] as String,
+          fecha: json['eventoFecha'] as String? ?? '',
+          lugar: json['eventoLugar'] as String? ?? '',
+          ciudad: '', // No disponible en la respuesta
+          imagen: '', // No disponible en la respuesta
+          maxTickets: 0, // No disponible en la respuesta
+          categoria: CategoryInfo(categoriaId: 0, nombre: ''), // No disponible
+          organizador: OrganizerInfo(
+            organizadorId: 0,
+            nombre: '',
+          ), // No disponible
+        ),
+        zona: ZoneInfo(
+          zonaId: 0, // No disponible en la respuesta
+          nombre: json['zonaNombre'] as String,
+          precio: (json['precio'] as num).toInt(),
+          maxTicketsZonas: 0, // No disponible en la respuesta
+        ),
+        qrCodeUrl: '', // No disponible en la respuesta
+        status: json['estado'] as String,
+      ),
+    );
+  }
+
   static OfferStatus _parseOfferStatus(String status) {
     switch (status.toUpperCase()) {
       case 'PUBLICADA':
@@ -391,4 +438,98 @@ class UserOfertante {
       staff: json['staff'] as bool,
     );
   }
+}
+
+// Entidad para las publicaciones del marketplace (respuesta del servidor)
+class MarketplacePublication {
+  final int id;
+  final int usuarioId;
+  final String usuarioEmail;
+  final double precioUnitario;
+  final bool aceptarOfertas;
+  final int estado;
+  final DateTime fechaAlta;
+  final List<int> ticketsOfertadosIds;
+
+  const MarketplacePublication({
+    required this.id,
+    required this.usuarioId,
+    required this.usuarioEmail,
+    required this.precioUnitario,
+    required this.aceptarOfertas,
+    required this.estado,
+    required this.fechaAlta,
+    required this.ticketsOfertadosIds,
+  });
+
+  factory MarketplacePublication.fromJson(Map<String, dynamic> json) {
+    return MarketplacePublication(
+      id: json['id'] as int,
+      usuarioId: json['usuarioId'] as int,
+      usuarioEmail: json['usuarioEmail'] as String,
+      precioUnitario: (json['precioUnitario'] as num).toDouble(),
+      aceptarOfertas: json['aceptarOfertas'] as bool,
+      estado: json['estado'] as int,
+      fechaAlta: DateTime.parse(json['fechaAlta'] as String),
+      ticketsOfertadosIds: (json['ticketsOfertadosIds'] as List<dynamic>)
+          .map((id) => id as int)
+          .toList(),
+    );
+  }
+
+  // Convertir a MarketplaceOffer para compatibilidad con la UI
+  MarketplaceOffer toMarketplaceOffer({
+    required String eventName,
+    required String zoneName,
+  }) {
+    return MarketplaceOffer(
+      id: id,
+      precioOfertado: precioUnitario,
+      statusOferta: estado == 1 ? OfferStatus.publicada : OfferStatus.cancelada,
+      fechaOferta: fechaAlta,
+      fechaRespuesta: null,
+      userOfertante: UserOfertante(
+        id: usuarioId,
+        nombres: usuarioEmail
+            .split('@')
+            .first, // Usar parte del email como nombre temporal
+        apellidoP: '',
+        apellidoM: '',
+        email: usuarioEmail,
+        verificado: false,
+        telefono: null,
+        ci: null,
+        staff: false,
+      ),
+      ticketOfertado: TicketInfo(
+        id: ticketsOfertadosIds.isNotEmpty ? ticketsOfertadosIds.first : 0,
+        token: 'ticket_${ticketsOfertadosIds.first}',
+        evento: EventInfo(
+          eventoId: 0, // No disponible en la respuesta
+          nombre: eventName,
+          fecha: fechaAlta
+              .toString()
+              .split(' ')
+              .first, // Usar fecha de alta como temporal
+          lugar: 'Lugar no disponible',
+          ciudad: 'Ciudad no disponible',
+          imagen: 'imagen_default.jpg',
+          maxTickets: 100,
+          categoria: CategoryInfo(categoriaId: 1, nombre: 'General'),
+          organizador: OrganizerInfo(organizadorId: 1, nombre: 'Organizador'),
+        ),
+        zona: ZoneInfo(
+          zonaId: 1,
+          nombre: zoneName,
+          precio: precioUnitario.toInt(),
+          maxTicketsZonas: ticketsOfertadosIds.length,
+        ),
+        qrCodeUrl: 'qr_placeholder.png',
+        status: 'ACTIVO',
+      ),
+    );
+  }
+
+  bool get isActive => estado == 1;
+  int get ticketCount => ticketsOfertadosIds.length;
 }

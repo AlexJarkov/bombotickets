@@ -236,9 +236,10 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
                                   'Precio Original: \$${_formatPrice(_info!.originalPrice!)}',
                                   style: GoogleFonts.inter(
                                     fontSize: res.dp(1.35),
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface.withOpacity(0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),
@@ -255,11 +256,12 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
                                     errorMessage: _qtyError,
                                     focusedBorder: true,
                                     onChanged: (_) {
-                                      if (_formPosted)
+                                      if (_formPosted) {
                                         setState(() {
                                           _qtyError = null;
                                           _submitError = null;
                                         });
+                                      }
                                     },
                                   ),
                                 ),
@@ -277,11 +279,12 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
                                     errorMessage: _priceError,
                                     focusedBorder: true,
                                     onChanged: (_) {
-                                      if (_formPosted)
+                                      if (_formPosted) {
                                         setState(() {
                                           _priceError = null;
                                           _submitError = null;
                                         });
+                                      }
                                     },
                                   ),
                                 ),
@@ -342,9 +345,8 @@ class _SellTicketDetailsScreenState extends State<SellTicketDetailsScreen> {
                                 'Comisión de la app: 5% del precio final',
                                 style: GoogleFonts.inter(
                                   fontSize: res.dp(1.2),
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.6),
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                 ),
                               ),
                             ),
@@ -537,9 +539,9 @@ class _ErrorBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.25)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

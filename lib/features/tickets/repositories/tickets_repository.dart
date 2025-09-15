@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'dart:developer';
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../entities/event_type.dart';
 import '../entities/event.dart';
@@ -231,7 +232,7 @@ class TicketsRepository {
     try {
       final headers = await _getHeaders();
       final response = await _dio.get(
-        '/marketplace-by-evento',
+        '/publicaciones/by-evento',
         queryParameters: {'evento': eventName},
         options: Options(headers: headers),
       );
@@ -247,12 +248,30 @@ class TicketsRepository {
       }
 
       if (parsedData['codigo'] == 200 && parsedData['data'] != null) {
-        final List<dynamic> ticketsData = parsedData['data'] as List<dynamic>;
-        return ticketsData
-            .map(
-              (item) => MarketplaceOffer.fromJson(item as Map<String, dynamic>),
-            )
-            .toList();
+        final List<dynamic> publicationsData =
+            parsedData['data'] as List<dynamic>;
+
+        // Convertir las publicaciones del servidor a MarketplaceOffer
+        final List<MarketplaceOffer> offers = [];
+        for (final item in publicationsData) {
+          try {
+            final publication = MarketplacePublication.fromJson(
+              item as Map<String, dynamic>,
+            );
+            final offer = publication.toMarketplaceOffer(
+              eventName: eventName,
+              zoneName: 'Zona General', // Valor por defecto, se puede mejorar
+            );
+            offers.add(offer);
+          } catch (e) {
+            log('Error parsing publication item: $e');
+            log('Item data: $item');
+            // Continúa con los siguientes elementos si uno falla
+            continue;
+          }
+        }
+
+        return offers;
       } else {
         throw Exception(
           parsedData['mensaje'] ?? 'Error al obtener tickets del evento',
@@ -298,7 +317,9 @@ class TicketsRepository {
         final List<dynamic> offersData = parsedData['data'] as List<dynamic>;
         return offersData
             .map(
-              (item) => MarketplaceOffer.fromJson(item as Map<String, dynamic>),
+              (item) => MarketplaceOffer.fromApiResponse(
+                item as Map<String, dynamic>,
+              ),
             )
             .toList();
       } else {
@@ -613,6 +634,192 @@ class TicketsRepository {
         log('[Marketplace] Throwing error: $msg');
         throw Exception('Error al publicar: $msg');
       }
+      rethrow;
+    }
+  }
+
+  /// Obtener mis listados del marketplace (ventas)
+  Future<List<MarketplaceOffer>> getMyMarketplaceListings() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _dio.get(
+        '/publicaciones/mine',
+        options: Options(headers: headers),
+      );
+
+      final responseData = _parseResponse(response.data);
+      if (responseData == null) {
+        log('Failed to parse response data');
+        return [];
+      }
+
+      log('getMyMarketplaceListings response: $responseData');
+
+      if (responseData['codigo'] == 200 && responseData['data'] != null) {
+        final List<dynamic> dataList = responseData['data'] as List<dynamic>;
+        return dataList
+            .map(
+              (json) => MarketplaceOffer.fromApiResponse(
+                json as Map<String, dynamic>,
+              ),
+            )
+            .toList();
+      } else {
+        log(
+          'API returned codigo: ${responseData['codigo']} - ${responseData['mensaje'] ?? 'Unknown error'}',
+        );
+        return [];
+      }
+    } on DioException catch (e) {
+      log('DioException in getMyMarketplaceListings: ${e.message}');
+      return [];
+    } catch (e) {
+      log('Unexpected error in getMyMarketplaceListings: $e');
+      return [];
+    }
+  }
+
+  // 11. Validar código QR de ticket
+  Future<Map<String, dynamic>> validateQRCode(String qrToken) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _dio.post(
+        '/read-qr',
+        data: {'qr': qrToken},
+        options: Options(headers: headers),
+      );
+
+      log('=== VALIDATE QR RESPONSE ===');
+      log('Status Code: ${response.statusCode}');
+      log('QR Token: $qrToken');
+      log('Response data: ${response.data}');
+
+      final parsedData = _parseResponse(response.data);
+      if (parsedData == null) {
+        throw Exception('Respuesta del servidor inválida');
+      }
+
+      if (parsedData['codigo'] == 200 && parsedData['data'] != null) {
+        return parsedData['data'] as Map<String, dynamic>;
+      } else {
+        throw Exception(parsedData['mensaje'] ?? 'Error al validar código QR');
+      }
+    } on DioException catch (e) {
+      log('DioException in validateQRCode: ${e.message}');
+      if (e.response?.data != null) {
+        final errorData = _parseResponse(e.response!.data);
+        if (errorData != null && errorData['mensaje'] != null) {
+          throw Exception(errorData['mensaje']);
+        }
+      }
+      throw Exception('Error de conexión al validar QR');
+    } catch (e) {
+      log('Unexpected error in validateQRCode: $e');
+      rethrow;
+    }
+  }
+
+  // 11.5. Leer QR desde archivo de imagen
+  Future<Map<String, dynamic>> readQRFromFile(File imageFile) async {
+    try {
+      final headers = await _getHeaders();
+
+      FormData formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: 'qr_image.jpg',
+        ),
+      });
+
+      final response = await _dio.post(
+        '/read-qr-from-file',
+        data: formData,
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            if (headers['Authorization'] != null)
+              'Authorization': headers['Authorization'],
+          },
+        ),
+      );
+
+      log('QR from file response: ${response.data}');
+
+      final parsed = _parseResponse(response.data);
+      if (parsed == null) {
+        throw Exception('Failed to parse QR from file response');
+      }
+
+      return parsed;
+    } on DioException catch (e) {
+      log('DioException in readQRFromFile: ${e.message}');
+      log('Response data: ${e.response?.data}');
+      if (e.response?.data != null) {
+        final parsed = _parseResponse(e.response!.data);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+      rethrow;
+    } catch (e) {
+      log('Unexpected error in readQRFromFile: $e');
+      rethrow;
+    }
+  }
+
+  // 12. Crear publicación en marketplace
+  Future<List<MarketplaceOffer>> createMarketplaceListing({
+    required List<String> qrTokens,
+    required int cantidad,
+    required double precioOfertado,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await _dio.post(
+        '/marketplace',
+        data: {
+          'qrTokens': qrTokens,
+          'cantidad': cantidad,
+          'precioOfertado': precioOfertado,
+        },
+        options: Options(headers: headers),
+      );
+
+      log('=== CREATE MARKETPLACE LISTING RESPONSE ===');
+      log('Status Code: ${response.statusCode}');
+      log('QR Tokens count: ${qrTokens.length}');
+      log('Cantidad: $cantidad');
+      log('Precio ofertado: $precioOfertado');
+      log('Response data: ${response.data}');
+
+      final parsedData = _parseResponse(response.data);
+      if (parsedData == null) {
+        throw Exception('Respuesta del servidor inválida');
+      }
+
+      if (parsedData['codigo'] == 201 && parsedData['data'] != null) {
+        final List<dynamic> offersData = parsedData['data'] as List<dynamic>;
+        return offersData
+            .map(
+              (item) => MarketplaceOffer.fromJson(item as Map<String, dynamic>),
+            )
+            .toList();
+      } else {
+        throw Exception(
+          parsedData['mensaje'] ?? 'Error al crear la publicación',
+        );
+      }
+    } on DioException catch (e) {
+      log('DioException in createMarketplaceListing: ${e.message}');
+      if (e.response?.data != null) {
+        final errorData = _parseResponse(e.response!.data);
+        if (errorData != null && errorData['mensaje'] != null) {
+          throw Exception(errorData['mensaje']);
+        }
+      }
+      throw Exception('Error de conexión al crear publicación');
+    } catch (e) {
+      log('Unexpected error in createMarketplaceListing: $e');
       rethrow;
     }
   }

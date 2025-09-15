@@ -2,7 +2,7 @@ import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/config/theme/app_theme_new.dart';
 import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/glass_card.dart';
-import 'package:bombotickets/features/tickets/presentation/tickets_screen.dart';
+import 'package:bombotickets/features/tickets/providers/tickets_tab_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,99 +110,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         childAspectRatio: 1.0,
                         children: [
                           (() {
-                                final w = _QuickAccessCard(
-                                  icon: Icons.qr_code_scanner_rounded,
-                                  title: 'Validar Ticket',
-                                  subtitle: 'Escanear QR',
-                                  color: AppTheme.primaryColor,
-                                  onTap: () {
-                                    // Ir al tab de Escanear (índice 2)
-                                    context.go('/productos');
-                                  },
-                              );
-                                if (reduce) return w;
-                                return w
-                                    .animate()
-                                    .slideY(
-                                      duration: 300.ms,
-                                      delay: 120.ms,
-                                      begin: 0.18,
-                                      end: 0,
-                                    )
-                                    .fadeIn(duration: 300.ms);
-                              })(),
+                            final w = _QuickAccessCard(
+                              icon: Icons.qr_code_scanner_rounded,
+                              title: 'Validar Ticket',
+                              subtitle: 'Escanear QR',
+                              color: AppTheme.primaryColor,
+                              onTap: () {
+                                // Ir al tab de Escanear (índice 2)
+                                context.go('/productos');
+                              },
+                            );
+                            if (reduce) return w;
+                            return w
+                                .animate()
+                                .slideY(
+                                  duration: 300.ms,
+                                  delay: 120.ms,
+                                  begin: 0.18,
+                                  end: 0,
+                                )
+                                .fadeIn(duration: 300.ms);
+                          })(),
 
                           (() {
-                                final w = _QuickAccessCard(
-                                  icon: Icons.shopping_cart_rounded,
-                                  title: 'Comprar',
-                                  subtitle: 'Eventos disponibles',
-                                  color: AppTheme.successColor,
-                                  onTap: () {
-                                    // Ir al tab de Tickets (índice 1) -> Comprar por defecto
-                                    ref.read(ticketsTabProvider.notifier).state = 0;
-                                    context.go('/clientes');
-                                  },
-                                );
-                                if (reduce) return w;
-                                return w
-                                    .animate()
-                                    .slideY(
-                                      duration: 300.ms,
-                                      delay: 180.ms,
-                                      begin: 0.18,
-                                      end: 0,
-                                    )
-                                    .fadeIn(duration: 300.ms);
-                              })(),
+                            final w = _QuickAccessCard(
+                              icon: Icons.shopping_cart_rounded,
+                              title: 'Comprar',
+                              subtitle: 'Eventos disponibles',
+                              color: AppTheme.successColor,
+                              onTap: () {
+                                // Ir al tab de Tickets (índice 1) -> Comprar por defecto
+                                ref.read(ticketsTabProvider.notifier).state = 0;
+                                context.go('/clientes');
+                              },
+                            );
+                            if (reduce) return w;
+                            return w
+                                .animate()
+                                .slideY(
+                                  duration: 300.ms,
+                                  delay: 180.ms,
+                                  begin: 0.18,
+                                  end: 0,
+                                )
+                                .fadeIn(duration: 300.ms);
+                          })(),
 
                           (() {
-                                final w = _QuickAccessCard(
-                                  icon: Icons.sell_rounded,
-                                  title: 'Vender',
-                                  subtitle: 'Reventa de tickets',
-                                  color: AppTheme.warningColor,
-                                  onTap: () {
-                                    // Pre-seleccionar tab Vender (1) y navegar a Tickets (índice 1)
-                                    ref.read(ticketsTabProvider.notifier).state =
-                                        1;
-                                    context.go('/clientes');
-                                  },
-                              );
-                                if (reduce) return w;
-                                return w
-                                    .animate()
-                                    .slideY(
-                                      duration: 300.ms,
-                                      delay: 240.ms,
-                                      begin: 0.18,
-                                      end: 0,
-                                    )
-                                    .fadeIn(duration: 300.ms);
-                              })(),
+                            final w = _QuickAccessCard(
+                              icon: Icons.sell_rounded,
+                              title: 'Vender',
+                              subtitle: 'Reventa de tickets',
+                              color: AppTheme.warningColor,
+                              onTap: () {
+                                // Pre-seleccionar tab Vender (1) y navegar a Tickets (índice 1)
+                                ref.read(ticketsTabProvider.notifier).state = 1;
+                                context.go('/clientes');
+                              },
+                            );
+                            if (reduce) return w;
+                            return w
+                                .animate()
+                                .slideY(
+                                  duration: 300.ms,
+                                  delay: 240.ms,
+                                  begin: 0.18,
+                                  end: 0,
+                                )
+                                .fadeIn(duration: 300.ms);
+                          })(),
 
                           (() {
-                                final w = _QuickAccessCard(
-                                  icon: Icons.person_rounded,
-                                  title: 'Perfil',
-                                  subtitle: 'Mi cuenta',
-                                  color: AppTheme.secondaryColor,
-                                  onTap: () {
-                                    // Ir al tab de Perfil (índice 3)
-                                    context.go('/perfil');
-                                  },
-                              );
-                                if (reduce) return w;
-                                return w
-                                    .animate()
-                                    .slideY(
-                                      duration: 300.ms,
-                                      delay: 300.ms,
-                                      begin: 0.18,
-                                      end: 0,
-                                    )
-                                    .fadeIn(duration: 300.ms);
-                              })(),
+                            final w = _QuickAccessCard(
+                              icon: Icons.person_rounded,
+                              title: 'Perfil',
+                              subtitle: 'Mi cuenta',
+                              color: AppTheme.secondaryColor,
+                              onTap: () {
+                                // Ir al tab de Perfil (índice 3)
+                                context.go('/perfil');
+                              },
+                            );
+                            if (reduce) return w;
+                            return w
+                                .animate()
+                                .slideY(
+                                  duration: 300.ms,
+                                  delay: 300.ms,
+                                  begin: 0.18,
+                                  end: 0,
+                                )
+                                .fadeIn(duration: 300.ms);
+                          })(),
                         ],
                       ),
                     ],
