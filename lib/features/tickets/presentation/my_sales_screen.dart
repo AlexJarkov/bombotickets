@@ -151,7 +151,10 @@ class _MySalesScreenState extends ConsumerState<MySalesScreen> {
     BuildContext context,
   ) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: res.wp(4), vertical: res.hp(0.5)),
+      margin: EdgeInsets.symmetric(
+        horizontal: res.wp(4),
+        vertical: res.hp(0.5),
+      ),
       child: Row(
         children: [
           Expanded(

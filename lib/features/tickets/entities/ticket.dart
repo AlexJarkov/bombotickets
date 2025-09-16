@@ -450,6 +450,8 @@ class MarketplacePublication {
   final int estado;
   final DateTime fechaAlta;
   final List<int> ticketsOfertadosIds;
+  final String? eventoFecha;
+  final String? eventoLugar;
 
   const MarketplacePublication({
     required this.id,
@@ -460,6 +462,8 @@ class MarketplacePublication {
     required this.estado,
     required this.fechaAlta,
     required this.ticketsOfertadosIds,
+    this.eventoFecha,
+    this.eventoLugar,
   });
 
   factory MarketplacePublication.fromJson(Map<String, dynamic> json) {
@@ -474,6 +478,25 @@ class MarketplacePublication {
       ticketsOfertadosIds: (json['ticketsOfertadosIds'] as List<dynamic>)
           .map((id) => id as int)
           .toList(),
+      eventoFecha: json['eventoFecha'] as String?,
+      eventoLugar: json['eventoLugar'] as String?,
+    );
+  }
+
+  // Método específico para parsear respuestas de eventos que no incluyen ticketsOfertadosIds
+  factory MarketplacePublication.fromEventJson(Map<String, dynamic> json) {
+    return MarketplacePublication(
+      id: json['id'] as int,
+      usuarioId: json['usuarioId'] as int,
+      usuarioEmail: json['usuarioEmail'] as String,
+      precioUnitario: (json['precioUnitario'] as num).toDouble(),
+      aceptarOfertas: json['aceptarOfertas'] as bool,
+      estado: json['estado'] as int,
+      fechaAlta: DateTime.parse(json['fechaAlta'] as String),
+      ticketsOfertadosIds:
+          [], // Lista vacía por defecto cuando no está disponible
+      eventoFecha: json['eventoFecha'] as String?,
+      eventoLugar: json['eventoLugar'] as String?,
     );
   }
 
@@ -502,16 +525,13 @@ class MarketplacePublication {
         staff: false,
       ),
       ticketOfertado: TicketInfo(
-        id: ticketsOfertadosIds.isNotEmpty ? ticketsOfertadosIds.first : 0,
-        token: 'ticket_${ticketsOfertadosIds.first}',
+        id: ticketsOfertadosIds.isNotEmpty ? ticketsOfertadosIds.first : id,
+        token: 'ticket_$id',
         evento: EventInfo(
           eventoId: 0, // No disponible en la respuesta
           nombre: eventName,
-          fecha: fechaAlta
-              .toString()
-              .split(' ')
-              .first, // Usar fecha de alta como temporal
-          lugar: 'Lugar no disponible',
+          fecha: eventoFecha ?? fechaAlta.toString().split(' ').first,
+          lugar: eventoLugar ?? 'Lugar no disponible',
           ciudad: 'Ciudad no disponible',
           imagen: 'imagen_default.jpg',
           maxTickets: 100,

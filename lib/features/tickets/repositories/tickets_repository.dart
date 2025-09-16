@@ -247,17 +247,33 @@ class TicketsRepository {
         throw Exception('Respuesta del servidor inválida');
       }
 
-      if (parsedData['codigo'] == 200 && parsedData['data'] != null) {
+      if (parsedData['codigo'] == 200) {
+        // Si data es null, devolver lista vacía
+        if (parsedData['data'] == null) {
+          log('No tickets found for event: $eventName');
+          return [];
+        }
+
         final List<dynamic> publicationsData =
             parsedData['data'] as List<dynamic>;
 
         // Convertir las publicaciones del servidor a MarketplaceOffer
         final List<MarketplaceOffer> offers = [];
+        final Set<int> seenIds = <int>{}; // Para evitar duplicados
+
         for (final item in publicationsData) {
           try {
-            final publication = MarketplacePublication.fromJson(
+            final publication = MarketplacePublication.fromEventJson(
               item as Map<String, dynamic>,
             );
+
+            // Verificar si ya hemos procesado esta publicación
+            if (seenIds.contains(publication.id)) {
+              log('Skipping duplicate publication with id: ${publication.id}');
+              continue;
+            }
+            seenIds.add(publication.id);
+
             final offer = publication.toMarketplaceOffer(
               eventName: eventName,
               zoneName: 'Zona General', // Valor por defecto, se puede mejorar

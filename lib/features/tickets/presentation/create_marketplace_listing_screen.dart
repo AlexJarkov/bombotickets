@@ -3,12 +3,15 @@ import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/app_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui';
 import '../providers/marketplace_provider.dart';
 
 // Modelo para la información del ticket escaneado
@@ -195,60 +198,76 @@ class _CreateMarketplaceListingScreenState
     );
   }
 
-  // Sección del scanner
+  // Sección del scanner con diseño elegante
   Widget _buildScannerSection(Responsive res, bool isDark) {
-    return Column(
-      children: [
-        // Scanner Card
-        AppCard(
-          padding: EdgeInsets.zero,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
-            child: SizedBox(
-              height: res.hp(50),
-              child: MobileScanner(
-                controller: _scannerController ??= MobileScannerController(),
-                onDetect: _onQRDetected,
-              ),
-            ),
-          ),
-        ),
+    return SizedBox(
+      height: res.hp(60),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.biggest;
+          final cutOutSize = math.min(size.width, size.height) * 0.7;
+          final cutOutTop = (size.height - cutOutSize) / 2;
+          final cutOutLeft = (size.width - cutOutSize) / 2;
+          final cutOutRect = Rect.fromLTWH(
+            cutOutLeft,
+            cutOutTop,
+            cutOutSize,
+            cutOutSize,
+          );
 
-        SizedBox(height: AppTheme.spacingMedium),
-
-        // Información del scanner (similar a qr_scanner_screen)
-        AppCard(
-          padding: EdgeInsets.all(AppTheme.spacingLarge),
-          child: Column(
+          return Stack(
+            fit: StackFit.expand,
             children: [
-              Icon(
-                Icons.qr_code_scanner,
-                size: res.dp(4),
-                color: AppTheme.primaryColor,
-              ),
-              SizedBox(height: AppTheme.spacingMedium),
-              Text(
-                'Escáner QR Activo',
-                style: GoogleFonts.inter(
-                  fontSize: AppTheme.fontSizeBodyLarge,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : Colors.black87,
+              // Camera preview con bordes redondeados
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+                child: MobileScanner(
+                  controller: _scannerController ??= MobileScannerController(
+                    detectionSpeed: DetectionSpeed.unrestricted,
+                    facing: CameraFacing.back,
+                    torchEnabled: false,
+                    formats: [BarcodeFormat.qrCode],
+                  ),
+                  fit: BoxFit.cover,
+                  scanWindow: cutOutRect,
+                  onDetect: _onQRDetected,
+                  errorBuilder: (context, error, child) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.borderRadiusLarge,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No se pudo acceder a la cámara',
+                          style: GoogleFonts.inter(color: Colors.white),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                textAlign: TextAlign.center,
               ),
-              SizedBox(height: AppTheme.spacingSmall),
-              Text(
-                'Posiciona el código QR dentro del marco para escanearlo automáticamente',
-                style: GoogleFonts.inter(
-                  fontSize: AppTheme.fontSizeBodyNormal,
-                  color: isDark ? Colors.white60 : Colors.black54,
+
+              // Overlay elegante
+              Positioned.fill(
+                child: _ScannerOverlay(
+                  cutOutRect: cutOutRect,
+                  processing: _isLoading,
+                  onToggleTorch: () async {
+                    try {
+                      await _scannerController?.toggleTorch();
+                    } catch (e) {
+                      _showError('Error al cambiar la linterna');
+                    }
+                  },
                 ),
-                textAlign: TextAlign.center,
               ),
             ],
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 
@@ -861,11 +880,11 @@ class _CreateMarketplaceListingScreenState
           return;
         }
 
-        // Verificar estado del ticket
-        if (ticketInfo.status != 'EN_VENTA') {
+        // Verificar estado del ticket - solo permitir PENDING_PAYMENT
+        if (ticketInfo.status != 'PENDING_PAYMENT') {
           if (mounted) {
             _showError(
-              'El ticket no está disponible para venta (Estado: ${ticketInfo.status})',
+              'Solo se pueden vender tickets pagados (Estado actual: ${ticketInfo.status})',
             );
           }
           return;
@@ -992,6 +1011,248 @@ class _CreateMarketplaceListingScreenState
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+}
+
+// Clases para el overlay elegante del scanner
+class _ScannerOverlay extends StatefulWidget {
+  final Rect cutOutRect;
+  final VoidCallback onToggleTorch;
+  final bool processing;
+
+  const _ScannerOverlay({
+    Key? key,
+    required this.cutOutRect,
+    required this.onToggleTorch,
+    required this.processing,
+  }) : super(key: key);
+
+  @override
+  State<_ScannerOverlay> createState() => _ScannerOverlayState();
+}
+
+class _ScannerOverlayState extends State<_ScannerOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glowCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _glowCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final res = Responsive.of(context);
+    return AnimatedBuilder(
+      animation: _glowCtrl,
+      builder: (context, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final cutOutRect = widget.cutOutRect;
+            final cutOutTop = cutOutRect.top;
+            final cutOutSize = cutOutRect.width;
+            final t = _glowCtrl.value; // 0..1
+
+            return Stack(
+              children: [
+                // Blurred overlay outside the cutout
+                ClipPath(
+                  clipper: _OutsideHoleClipper(
+                    holeRect: cutOutRect,
+                    radius: 16,
+                  ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(color: Colors.black.withOpacity(0.25)),
+                  ),
+                ),
+
+                // Border of the cutout with animated outer glow
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CutoutBorderPainter(
+                      cutOutRect: cutOutRect,
+                      radius: 16,
+                      glowT: t,
+                    ),
+                  ),
+                ),
+
+                // Torch button in top right corner
+                Positioned(
+                  top: cutOutTop + 16,
+                  right: (constraints.maxWidth - cutOutRect.right) + 16,
+                  child: _CircleButton(
+                    icon: Icons.flash_on_rounded,
+                    onTap: widget.onToggleTorch,
+                    isDark: true,
+                  ),
+                ),
+
+                // Hint text under the square
+                Positioned(
+                  top: cutOutTop + cutOutSize + 16,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Text(
+                      'Apunta al código QR del ticket',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: res.dp(1.6),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Processing overlay
+                if (widget.processing)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation(
+                                  Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Validando QR…',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: res.dp(1.6),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _OutsideHoleClipper extends CustomClipper<Path> {
+  final Rect holeRect;
+  final double radius;
+
+  _OutsideHoleClipper({required this.holeRect, required this.radius});
+
+  @override
+  Path getClip(Size size) {
+    final full = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final hole = Path()
+      ..addRRect(RRect.fromRectAndRadius(holeRect, Radius.circular(radius)));
+    return Path.combine(PathOperation.difference, full, hole);
+  }
+
+  @override
+  bool shouldReclip(covariant _OutsideHoleClipper oldClipper) {
+    return oldClipper.holeRect != holeRect || oldClipper.radius != radius;
+  }
+}
+
+class _CutoutBorderPainter extends CustomPainter {
+  final Rect cutOutRect;
+  final double radius;
+  final double glowT; // 0..1 animation value
+
+  _CutoutBorderPainter({
+    required this.cutOutRect,
+    required this.radius,
+    required this.glowT,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(cutOutRect, Radius.circular(radius));
+
+    // Solid border
+    final border = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawRRect(rrect, border);
+
+    // Animated outer glow
+    final glowOpacity = 0.25 + 0.25 * glowT; // 0.25..0.5
+    final sigma = 6.0 + 10.0 * glowT; // blur strength 6..16
+    final glow = Paint()
+      ..color = Colors.white.withOpacity(glowOpacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, sigma);
+
+    final full = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final hole = Path()..addRRect(rrect);
+    final outside = Path.combine(PathOperation.difference, full, hole);
+
+    canvas.save();
+    canvas.clipPath(outside);
+    canvas.drawRRect(rrect, glow);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _CutoutBorderPainter oldDelegate) {
+    return oldDelegate.cutOutRect != cutOutRect ||
+        oldDelegate.radius != radius ||
+        oldDelegate.glowT != glowT;
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDark;
+
+  const _CircleButton({
+    required this.icon,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.15),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: Colors.white, size: 24),
+        ),
       ),
     );
   }
