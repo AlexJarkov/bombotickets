@@ -5,6 +5,8 @@ import 'package:bombotickets/features/auth/otp_verification/presentation/otp_ver
 import 'package:bombotickets/config/layout/main_layout.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_live_scanner_screen.dart';
+import 'package:bombotickets/features/tickets/qr/presentation/qr_generation_screen.dart';
+import 'package:bombotickets/features/tickets/qr/presentation/qr_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bombotickets/features/tickets/presentation/sell_screen.dart';
 
@@ -94,5 +96,15 @@ final appRouter = GoRouter(
         return SellTicketDetailsScreen(ticketQr: qr ?? '');
       },
     ),
+    GoRoute(
+  name: 'qr-screen',
+  path: '/qr',
+  builder: (context, state) => const QrScreen(),
+),
+ GoRoute(
+  name: 'qr-generation',
+  path: '/qr-generation',
+  builder: (context, state) => const QrGenerationScreen(),
+),
   ],
 );
