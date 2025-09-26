@@ -24,7 +24,7 @@ class QrSuccessScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                    'Haz finalizado',
+                    'Haz finalizado, tus entradas te llegaran a tu correo ',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                     textAlign: TextAlign.center,
                   )
@@ -37,64 +37,6 @@ class QrSuccessScreen extends ConsumerWidget {
                   ),
 
               SizedBox(height: 24),
-
-              Text(
-                    'Monto pendiente',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                    textAlign: TextAlign.center,
-                  )
-                  .animate(delay: 200.ms)
-                  .fadeIn(duration: 600.ms, curve: Curves.easeOutQuart)
-                  .slideY(
-                    begin: 0.2,
-                    duration: 600.ms,
-                    curve: Curves.easeOutQuart,
-                  ),
-
-              SizedBox(height: 16),
-
-              Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Container(
-                      width: double.infinity,
-                      //padding: const EdgeInsets.all(16),
-                      alignment: Alignment.center,
-                      height: 72,
-                      //margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        //color: Colors.red[100],
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.borderRadiusSmall,
-                        ),
-                        border: Border.all(color: Colors.green, width: 3),
-                      ),
-                      child: Text(
-                        "Bs. 0",
-                        //'${qrForm.currentAmount}',
-                        style: TextStyle(
-                          //color:Colors.green[800],
-                          color: Colors.green,
-                          fontSize: AppTheme.fontSizeBodyLarge,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                  .animate(delay: 400.ms)
-                  .fadeIn(duration: 600.ms, curve: Curves.easeOutQuart)
-                  .slideY(
-                    begin: 0.3,
-                    duration: 600.ms,
-                    curve: Curves.easeOutBack,
-                  )
-                  .then(delay: 300.ms)
-                  .shimmer(
-                    duration: 1500.ms,
-                    color: Colors.green.withOpacity(0.5),
-                  ),
-
-              SizedBox(height: 40),
 
               // Icono de check y mensaje
               Column(
@@ -114,96 +56,12 @@ class QrSuccessScreen extends ConsumerWidget {
                       .then(delay: 500.ms)
                       .shimmer(
                         duration: 2000.ms,
-                        color: Colors.green.withOpacity(0.4),
+                        color: AppTheme.primaryColor.withOpacity(0.4),
                       )
                       .animate(delay: 1200.ms)
                       .shake(duration: 800.ms, hz: 1),
 
                   const SizedBox(height: 16),
-
-                  Text(
-                        '¡Mesa cobrada exitosamente!',
-                        style: TextStyle(
-                          fontSize: AppTheme.fontSizeBodyLarge,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        textAlign: TextAlign.center,
-                      )
-                      .animate(delay: 1100.ms)
-                      .fadeIn(duration: 600.ms, curve: Curves.easeOutQuart)
-                      .slideY(
-                        begin: 0.3,
-                        duration: 600.ms,
-                        curve: Curves.easeOutBack,
-                      )
-                      .then(delay: 300.ms)
-                      .shimmer(
-                        duration: 1500.ms,
-                        color: Colors.green.withOpacity(0.3),
-                      ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Botones de acciones
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                        icon: SvgPicture.asset(
-                          'assets/icons/exito-share-btn-icon.svg',
-                          //width: 48,
-                          semanticsLabel: 'Share Button',
-                        ),
-                        onPressed: () {
-                          // Lógica para compartir
-                        },
-                      )
-                      .animate(delay: 1600.ms)
-                      .fadeIn(duration: 600.ms)
-                      .slideX(
-                        begin: -0.5,
-                        duration: 600.ms,
-                        curve: Curves.easeOutBack,
-                      )
-                      .animate(target: 1)
-                      .scale(
-                        duration: 100.ms,
-                        curve: Curves.easeOut,
-                        begin: const Offset(1.0, 1.0),
-                        end: const Offset(0.95, 0.95),
-                      ),
-                  const SizedBox(width: 24),
-                  IconButton(
-                        icon: SvgPicture.asset(
-                          'assets/icons/exito-download-btn-icon.svg',
-                          //width: 48,
-                          semanticsLabel: 'Download Button',
-                        ),
-                        onPressed: () {
-                          // Lógica para descargar comprobante
-                        },
-                      )
-                      .animate(delay: 1700.ms)
-                      .fadeIn(duration: 600.ms)
-                      .slideX(
-                        begin: 0.5,
-                        duration: 600.ms,
-                        curve: Curves.easeOutBack,
-                      )
-                      .animate(target: 1)
-                      .scale(
-                        duration: 100.ms,
-                        curve: Curves.easeOut,
-                        begin: const Offset(1.0, 1.0),
-                        end: const Offset(0.95, 0.95),
-                      ),
-                ],
-              ),
-
-              const SizedBox(height: 40),
-
               // Botón de finalizar
               Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -225,8 +83,8 @@ class QrSuccessScreen extends ConsumerWidget {
                   ),
             ],
           ),
-        ),
+        ]),
       ),
-    );
+    ));
   }
 }

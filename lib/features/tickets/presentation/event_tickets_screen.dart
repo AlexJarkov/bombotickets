@@ -371,7 +371,11 @@ class _EventTicketsScreenState extends ConsumerState<EventTicketsScreen> {
                         extra: {
                           'unitPrice': offer.precioOfertado,
                           'maxQuantity': disponibles,
-                          'publicationId': offer.id,
+                          'publicacionId': offer.id,
+                          'nombreEvento':offer.ticketOfertado.evento.nombre,
+                          'zonaTicket':offer.ticketOfertado.zona.nombre,
+                          'correoVendedor':offer.userOfertante.email
+
                         },
                       );
                     },

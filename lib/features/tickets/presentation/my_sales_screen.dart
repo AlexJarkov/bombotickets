@@ -9,6 +9,7 @@ import 'package:pull_to_refresh_flutter3/pull_to_refresh_flutter3.dart' as ptr;
 import '../entities/ticket.dart';
 import '../providers/marketplace_provider.dart';
 import 'create_marketplace_listing_screen.dart';
+import 'package:collection/collection.dart';
 
 // Provider para filtro de estado
 final selectedSalesStatusProvider = StateProvider<OfferStatus?>((ref) => null);
@@ -254,109 +255,166 @@ class _MySalesScreenState extends ConsumerState<MySalesScreen> {
       ),
     );
   }
-
-  Widget _buildSalesList(
-    Responsive res,
-    ThemeData theme,
-    AsyncValue<List<MarketplaceOffer>> salesAsync,
-    WidgetRef ref,
-  ) {
-    return salesAsync.when(
-      loading: () => Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-        ),
+Widget _buildSalesList(
+  Responsive res,
+  ThemeData theme,
+  AsyncValue<List<MarketplaceOffer>> salesAsync,
+  WidgetRef ref,
+) {
+  return salesAsync.when(
+    loading: () => Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
       ),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: res.dp(6), color: Colors.red),
-            SizedBox(height: AppTheme.spacingMedium),
-            Text(
-              'Error al cargar ventas',
-              style: GoogleFonts.inter(
-                fontSize: AppTheme.fontSizeBodyLarge,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
+    ),
+    error: (error, stack) => Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: res.dp(6), color: Colors.red),
+          SizedBox(height: AppTheme.spacingMedium),
+          Text(
+            'Error al cargar ventas',
+            style: GoogleFonts.inter(
+              fontSize: AppTheme.fontSizeBodyLarge,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-      data: (sales) {
-        if (sales.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.sell_outlined,
-                  size: res.dp(8),
+    ),
+    data: (sales) {
+      if (sales.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.sell_outlined,
+                size: res.dp(8),
+                color: AppTheme.grey1,
+              ),
+              SizedBox(height: AppTheme.spacingMedium),
+              Text(
+                'No tienes ventas aún',
+                style: GoogleFonts.inter(
+                  fontSize: AppTheme.fontSizeBodyLarge,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              SizedBox(height: AppTheme.spacingSmall),
+              Text(
+                'Crea tu primera oferta para comenzar a vender',
+                style: GoogleFonts.inter(
+                  fontSize: AppTheme.fontSizeBodyNormal,
                   color: AppTheme.grey1,
                 ),
-                SizedBox(height: AppTheme.spacingMedium),
-                Text(
-                  'No tienes ventas aún',
-                  style: GoogleFonts.inter(
-                    fontSize: AppTheme.fontSizeBodyLarge,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                SizedBox(height: AppTheme.spacingSmall),
-                Text(
-                  'Crea tu primera oferta para comenzar a vender',
-                  style: GoogleFonts.inter(
-                    fontSize: AppTheme.fontSizeBodyNormal,
-                    color: AppTheme.grey1,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ptr.SmartRefresher(
-          controller: _refreshController,
-          enablePullDown: true,
-          enablePullUp: false,
-          header: ptr.MaterialClassicHeader(
-            backgroundColor: theme.scaffoldBackgroundColor,
-            color: AppTheme.primaryColor,
-            distance: 80, // Aumentado de 50 a 80 para ser menos sensible
-          ),
-          onRefresh: _onRefresh,
-          child: ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.symmetric(horizontal: res.wp(4)),
-            itemCount: sales.length,
-            itemBuilder: (context, index) {
-              final sale = sales[index];
-
-              return Container(
-                    margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
-                    child: _buildSaleCard(sale, res, theme),
-                  )
-                  .animate(delay: Duration(milliseconds: index * 100))
-                  .fadeIn(duration: 600.ms)
-                  .slideX(
-                    begin: 0.3,
-                    duration: 600.ms,
-                    curve: Curves.easeOutBack,
-                  );
-            },
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         );
-      },
-    );
-  }
+      }
+
+      // 1) Filtro por estado (tabs)
+      final selectedStatus = ref.watch(selectedSalesStatusProvider);
+      final filtered = selectedStatus == null
+          ? sales
+          : sales.where((s) => s.statusOferta == selectedStatus).toList();
+
+      if (filtered.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.inbox_outlined, size: res.dp(8), color: AppTheme.grey1),
+              SizedBox(height: AppTheme.spacingMedium),
+              Text(
+                'Sin resultados para este estado',
+                style: GoogleFonts.inter(
+                  fontSize: AppTheme.fontSizeBodyLarge,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              SizedBox(height: AppTheme.spacingSmall),
+              Text(
+                'Cambiá el filtro para ver otras publicaciones',
+                style: GoogleFonts.inter(
+                  fontSize: AppTheme.fontSizeBodyNormal,
+                  color: AppTheme.grey1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      }
+
+String pubKey(MarketplaceOffer o) {
+  final ev = o.ticketOfertado.evento;
+  final zona = o.ticketOfertado.zona;
+  final evKey   = (ev.nombre ?? '').trim();
+  final zonaKey = (zona.zonaId?.toString() ?? zona.nombre ?? '').trim();
+  final precio  = (o.precioOfertado ?? 0).toStringAsFixed(2);
+  return '$evKey|$zonaKey|$precio';
+}
+
+final groups = groupBy<MarketplaceOffer, String>(filtered, pubKey);
+
+final grouped = groups.entries.map((e) => (
+  offer: e.value.first,
+  cantidad: e.value.length,
+)).toList();
+
+      // 4) UI con pull-to-refresh
+      return ptr.SmartRefresher(
+        controller: _refreshController,
+        enablePullDown: true,
+        enablePullUp: false,
+        header: ptr.MaterialClassicHeader(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          color: AppTheme.primaryColor,
+          distance: 80,
+        ),
+        onRefresh: _onRefresh,
+        child: ListView.builder(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: res.wp(4)),
+          itemCount: grouped.length,
+          itemBuilder: (context, index) {
+            final item = grouped[index];
+            return Container(
+              margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+              child: _buildSaleCard(
+                item.offer,
+                res,
+                theme,
+                cantidad: item.cantidad,
+              ),
+            )
+                .animate(delay: Duration(milliseconds: index * 100))
+                .fadeIn(duration: 600.ms)
+                .slideX(
+                  begin: 0.3,
+                  duration: 600.ms,
+                  curve: Curves.easeOutBack,
+                );
+          },
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildSaleCard(
     MarketplaceOffer sale,
     Responsive res,
-    ThemeData theme,
+    ThemeData theme,{
+    required int cantidad
+    }
   ) {
     return Container(
       decoration: BoxDecoration(
@@ -500,6 +558,34 @@ class _MySalesScreenState extends ConsumerState<MySalesScreen> {
           ),
 
           SizedBox(height: AppTheme.spacingNormal),
+          // Cantidad de tickets por publicación
+Container(
+  margin: EdgeInsets.symmetric(horizontal: AppTheme.spacingNormal),
+  padding: EdgeInsets.symmetric(
+    horizontal: AppTheme.spacingSmall,
+    vertical: AppTheme.spacingSmall / 2,
+  ),
+  decoration: BoxDecoration(
+    color: Colors.orange.withOpacity(0.12),
+    borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+  ),
+  child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.confirmation_num, size: res.dp(1.8), color: Colors.orange),
+      const SizedBox(width: 6),
+      Text(
+        'Tickets publicados: $cantidad',
+        style: GoogleFonts.inter(
+          fontSize: AppTheme.fontSizeBodyNormal,
+          fontWeight: FontWeight.w600,
+          color: Colors.orange,
+        ),
+      ),
+    ],
+  ),
+),
 
           // Información adicional y acciones
           Container(

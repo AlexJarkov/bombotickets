@@ -12,6 +12,10 @@ class QrFormState {
   final int quantity;                // cantidad de tickets
   final String additionalData;// ID PARA HEADER DEL GENERAR QR
   //final int splitCount; 
+  final String? nombreEvento;
+  final String? nombreZona;
+  final String? correoVendedor;
+  final int? publicacionId;
 
   QrFormState({
     required this.qrAmounts,
@@ -23,6 +27,10 @@ class QrFormState {
     required this.quantity,
     //required this.splitCount,
     required this.additionalData,
+      this.nombreEvento,
+    this.nombreZona,
+    this.correoVendedor,
+    this.publicacionId,
   });
 
   double get currentAmount =>
@@ -39,6 +47,10 @@ class QrFormState {
     int ? quantity,
     //int? splitCount,
     String? additionalData,
+     String? nombreEvento,
+    String? nombreZona,
+    String? correoVendedor,
+    int? publicacionId,
   }) {
     return QrFormState(
       qrAmounts: qrAmounts ?? this.qrAmounts,
@@ -50,6 +62,10 @@ class QrFormState {
       quantity: quantity ?? this.quantity,
       //splitCount: splitCount ?? this.splitCount,
       additionalData: additionalData ?? this.additionalData,
+       nombreEvento: nombreEvento ?? this.nombreEvento,
+      nombreZona: nombreZona ?? this.nombreZona,
+      correoVendedor: correoVendedor ?? this.correoVendedor,
+      publicacionId: publicacionId ?? this.publicacionId,
     );
   }
 }
@@ -73,6 +89,10 @@ void initializeSimple({
   required double baseTotal,
   required double commissionPercent,
   required int quantity,
+  String? nombreEvento,      // ← Nuevo
+  String? nombreZona,        // ← Nuevo
+  String? correoVendedor,
+  int? publicacionId,
 }) {
   final commissionBs = baseTotal * (commissionPercent / 100.0);
   final grandTotal = baseTotal + commissionBs;
@@ -87,38 +107,18 @@ void initializeSimple({
     tableTotal: baseTotal,            // subtotal sin comisión
     quantity: quantity,               // cantidad de tickets
     additionalData: additionalData,
+    nombreEvento: nombreEvento,
+    nombreZona: nombreZona,
+    correoVendedor: correoVendedor,
+    publicacionId: publicacionId,
   );
 }
 
-  /*
-  void initializePayment(
-    double tableTotal,
-    int splitCount,
-    double tipPercentage,
-    int tableId,
-  )
-  */
-
-   /*
-    final subtotal = tableTotal / splitCount;
-    final totalTip =
-        tableTotal * (tipPercentage / 100); // propina total de la mesa
-    final tipPerPerson = totalTip / splitCount; // propina por persona
-    final totalWithTip = subtotal + tipPerPerson;
-*/
   
    void markCurrentAsPaid() {
     state = state.copyWith(isPaymentComplete: true);
     showState();
   }
-/*
-  void moveToNextPayer() {
-    if (state.currentPayerIndex < state.qrAmounts.length - 1) {
-      state = state.copyWith(currentPayerIndex: state.currentPayerIndex + 1);
-    }
-    showState();
-  }
-*/
   void reset() {
     state = QrFormState(
       qrAmounts: [],

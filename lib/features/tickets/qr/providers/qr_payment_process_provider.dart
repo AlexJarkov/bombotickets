@@ -17,7 +17,11 @@ class QrPaymentProcessState {
   final bool allPaymentsCompleted;
   final bool isManualCheckLoading;
   final String? manualCheckMessage;
-  final int manualCheckMessageId; // Para forzar listener updates
+  final int manualCheckMessageId;
+  final String? nombreEvento;
+  final String? nombreZona;
+  final String? correoVendedor;
+  final int? publicacionId;
 
   QrPaymentProcessState({
     this.isLoading = false,
@@ -32,6 +36,10 @@ class QrPaymentProcessState {
     this.isManualCheckLoading = false,
     this.manualCheckMessage,
     this.manualCheckMessageId = 0,
+    this.nombreEvento,
+    this.nombreZona,
+    this.correoVendedor,
+    this.publicacionId,
   });
 
   QrPaymentProcessState copyWith({
@@ -102,6 +110,10 @@ class QrPaymentProcessNotifier extends StateNotifier<QrPaymentProcessState> {
             bolivianos ,
         cantidad: cantidad,
         additionalData: additionalData,
+         nombreEvento: qrForm.nombreEvento,
+      nombreZona: qrForm.nombreZona,
+      correoVendedor: qrForm.correoVendedor,
+      publicacionId: qrForm.publicacionId,
       );
 
       state = state.copyWith(
@@ -118,7 +130,6 @@ class QrPaymentProcessNotifier extends StateNotifier<QrPaymentProcessState> {
       }
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
-      rethrow;
     }
   }
 
@@ -126,12 +137,25 @@ class QrPaymentProcessNotifier extends StateNotifier<QrPaymentProcessState> {
     _verificationTimer?.cancel();
     _verificationTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
       if (state.isPaymentConfirmed || state.qrId == null) {
+
         _verificationTimer?.cancel();
         return;
+      }else{
+
       }
 
       await _checkPaymentStatus();
     });
+  }
+  Future<void> _mandarInfo() async {
+    final id = state.qrId;
+    if (id == null) return;
+    try {
+      final detalles = await qrRepository.getQrDetalles(id);
+      log('QR DETALLES RECIBIDOS: $detalles');
+    } catch (e) {
+      log('Error al obtener detalles de QR: $e');
+    }
   }
 
   Future<void> _checkPaymentStatus() async {
@@ -142,6 +166,12 @@ class QrPaymentProcessNotifier extends StateNotifier<QrPaymentProcessState> {
       if (status == 'PAG') {
         final qrFormNotifier = ref.read(qrFormProvider.notifier);
         qrFormNotifier.markCurrentAsPaid();
+          try {
+        final detalles = await qrRepository.getQrDetalles(state.qrId!);
+        log('QR DETALLES OK => $detalles');
+      } catch (e) {
+        log('QR DETALLES ERROR => $e');
+      }
 
         // Calcular monto restante correctamente
         final qrFormState = ref.read(qrFormProvider);
@@ -155,7 +185,7 @@ class QrPaymentProcessNotifier extends StateNotifier<QrPaymentProcessState> {
         ) {
           remaining += qrFormState.qrAmounts[i];
         }
-
+//aqui mando id qr a mi back
         state = state.copyWith(
           isPaymentConfirmed: true,
           remainingAmount: remaining,
@@ -194,6 +224,13 @@ class QrPaymentProcessNotifier extends StateNotifier<QrPaymentProcessState> {
       if (status == 'PAG') {
         final qrFormNotifier = ref.read(qrFormProvider.notifier);
         qrFormNotifier.markCurrentAsPaid();
+
+          try {
+        final detalles = await qrRepository.getQrDetalles(state.qrId!);
+        log('QR DETALLES OK => $detalles');
+      } catch (e) {
+        log('QR DETALLES ERROR => $e');
+      }
 
         // Calcular monto restante correctamente
         final qrFormState = ref.read(qrFormProvider);

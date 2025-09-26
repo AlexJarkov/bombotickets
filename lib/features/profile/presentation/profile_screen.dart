@@ -214,27 +214,45 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ],
                         SizedBox(height: AppTheme.spacingMedium),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () =>
-                                _showEditProfileSheet(context, ref),
-                            icon: const Icon(Icons.edit),
-                            label: const Text('Editar Perfil'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                vertical: AppTheme.spacingNormal,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.borderRadiusSmall,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                        Row(
+  children: [
+    // EDITAR PERFIL (secundario/outlined)
+    Expanded(
+      child: OutlinedButton.icon(
+        onPressed: () => _showEditProfileSheet(context, ref),
+        icon: const Icon(Icons.edit),
+        label: const Text('Editar Perfil'),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: AppTheme.primaryColor, width: 1.4),
+          foregroundColor: AppTheme.primaryColor,
+          padding: EdgeInsets.symmetric(vertical: AppTheme.spacingNormal),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+          ),
+        ),
+      ),
+    ),
+    SizedBox(width: AppTheme.spacingSmall),
+
+    // AGREGAR CUENTA (principal)
+    Expanded(
+      child: ElevatedButton.icon(
+        onPressed: () => context.go('/mis-cuentas-bancarias'),
+        icon: const Icon(Icons.account_balance_rounded),
+        label: const Text('Ver mis cuentas'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: AppTheme.spacingNormal),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+          ),
+        ),
+      ),
+    ),
+  ],
+),
+
                       ],
                     ),
                   ),
@@ -277,18 +295,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           profile.idNumber.isNotEmpty ? profile.idNumber : '—',
                         ),
                         // Removed Dirección. 'descripcion' is shown under avatar as a bio.
-                        _dataRow(
-                          context,
-                          'Número de Cuenta',
-                          profile.accountNumber.isNotEmpty
-                              ? profile.accountNumber
-                              : '—',
-                        ),
-                        _dataRow(
-                          context,
-                          'Nombre del banco',
-                          profile.bankName.isNotEmpty ? profile.bankName : '—',
-                        ),
                       ],
                     ),
                   ),

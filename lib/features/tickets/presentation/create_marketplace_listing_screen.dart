@@ -1,4 +1,5 @@
 import 'package:bombotickets/config/theme/app_theme_new.dart';
+import 'package:bombotickets/features/profile/models/CuentaBancariaModels.dart';
 import 'package:bombotickets/features/shared/utils/responsive.dart';
 import 'package:bombotickets/features/shared/widgets/animated_background.dart';
 import 'package:bombotickets/features/shared/widgets/app_card.dart';
@@ -9,10 +10,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
+
 import '../providers/marketplace_provider.dart';
+
+import 'package:bombotickets/features/profile/repositories/cuenta_bancaria.repository.dart';
+import 'package:bombotickets/features/profile/presentation/cuenta_bancaria_form.screen.dart';
 
 // Modelo para la información del ticket escaneado
 class ScannedTicketInfo {
@@ -56,7 +62,7 @@ class _CreateMarketplaceListingScreenState
     extends ConsumerState<CreateMarketplaceListingScreen> {
   final _priceController = TextEditingController();
 
-  // Arrays para manejar los tickets según la especificación
+  // Arrays para manejar los tickets
   final List<String> _qrTokens = [];
   final List<ScannedTicketInfo> _scannedTickets = [];
 
@@ -68,6 +74,16 @@ class _CreateMarketplaceListingScreenState
 
   // Controlador del scanner
   MobileScannerController? _scannerController;
+
+  // ✅ Estado de cuenta bancaria
+  bool _bankCheckInProgress = false;
+  bool? _hasBankAccount; // null => desconocido; true/false => verificado
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBankAccount();
+  }
 
   @override
   void dispose() {
@@ -94,10 +110,51 @@ class _CreateMarketplaceListingScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header personalizado
+                // Header
                 _buildCustomHeader(res, isDark),
-
                 SizedBox(height: AppTheme.spacingLarge),
+
+                // 🔎 Banner de advertencia si no hay cuenta bancaria
+                if (!_bankCheckInProgress && _hasBankAccount == false)
+                  Container(
+                    margin: EdgeInsets.only(bottom: AppTheme.spacingMedium),
+                    padding: EdgeInsets.all(AppTheme.spacingNormal),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.borderRadiusSmall,
+                      ),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.35),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Necesitas registrar una cuenta bancaria para publicar tus tickets.',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () async {
+                            await context.pushNamed(
+                              BankAccountFormScreen.name,
+                              extra: const BankAccountFormArgs.create(),
+                            );
+                            if (mounted) _checkBankAccount();
+                          },
+                          child: const Text('Configurar'),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Loading overlay
                 if (_isLoading)
@@ -118,28 +175,22 @@ class _CreateMarketplaceListingScreenState
                 if (_isScanning)
                   _buildScannerSection(res, isDark)
                 else ...[
-                  // Información del evento/zona si hay tickets
                   if (_currentEvent != null && _currentZone != null)
                     _buildEventInfoCard(res, isDark),
-
                   if (_currentEvent != null && _currentZone != null)
                     SizedBox(height: AppTheme.spacingMedium),
 
-                  // Lista de tickets escaneados
                   _buildTicketsSection(res, isDark),
-
                   SizedBox(height: AppTheme.spacingMedium),
 
-                  // Botón de agregar ticket
+                  // Botón de agregar ticket (requiere cuenta bancaria)
                   _buildAddTicketButton(res, isDark),
-
                   SizedBox(height: AppTheme.spacingMedium),
 
-                  // Campo de precio y botón de publicar
                   if (_scannedTickets.isNotEmpty) ...[
                     _buildPriceSection(res, isDark),
                     SizedBox(height: AppTheme.spacingMedium),
-                    _buildPublishButton(res, isDark),
+                    _buildPublishButton(res, isDark), // también valida cuenta
                   ],
                 ],
               ],
@@ -149,6 +200,89 @@ class _CreateMarketplaceListingScreenState
       ),
     );
   }
+
+  // ==========================
+  // VALIDACIÓN CUENTA BANCARIA
+  // ==========================
+
+  Future<void> _checkBankAccount() async {
+    setState(() => _bankCheckInProgress = true);
+    try {
+      final repo = ref.read(cuentaBancariaRepositoryProvider);
+      final res = await repo.getCuentas();
+
+      final root = res['data'] ?? res;
+      int count = 0;
+
+      if (root is List) {
+        count = root.length;
+      } else if (root is Map) {
+        if (root['cuentas'] is List) {
+          count = (root['cuentas'] as List).length;
+        } else if (root['cuentasBancarias'] is List) {
+          count = (root['cuentasBancarias'] as List).length;
+        } else if (root.isNotEmpty) {
+          count = 1; // algunos backends devuelven objeto único
+        }
+      }
+
+      setState(() => _hasBankAccount = count > 0);
+    } catch (e) {
+      setState(() => _hasBankAccount = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              const Text('No se pudo verificar tu cuenta bancaria. Intenta de nuevo.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _bankCheckInProgress = false);
+    }
+  }
+
+  Future<bool> _requireBankAccountOrRedirect() async {
+    // Si aún no sabemos, verifica
+    if (_hasBankAccount == null) await _checkBankAccount();
+    if (_hasBankAccount == true) return true;
+
+    // Ofrece ir a crear
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cuenta bancaria requerida'),
+        content: const Text(
+          'Necesitas registrar una cuenta bancaria para poder publicar y vender tickets.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Ahora no'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Agregar cuenta'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true && mounted) {
+      await context.pushNamed(
+        BankAccountFormScreen.name,
+        extra: const BankAccountFormArgs.create(),
+      );
+      // Revalidar al volver
+      await _checkBankAccount();
+    }
+
+    return _hasBankAccount == true;
+  }
+
+  // ==========================
+  // UI
+  // ==========================
 
   // Header personalizado
   Widget _buildCustomHeader(Responsive res, bool isDark) {
@@ -164,22 +298,17 @@ class _CreateMarketplaceListingScreenState
         ),
         SizedBox(width: AppTheme.spacingSmall),
         Expanded(
-          child:
-              Text(
-                    _isScanning ? 'Escanear QR' : 'Nueva Publicación',
-                    style: GoogleFonts.poppins(
-                      fontSize: AppTheme.fontSizeH2,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  )
-                  .animate()
-                  .fadeIn(duration: 600.ms)
-                  .slideY(
-                    begin: -0.3,
-                    duration: 600.ms,
-                    curve: Curves.easeOutBack,
-                  ),
+          child: Text(
+            _isScanning ? 'Escanear QR' : 'Nueva Publicación',
+            style: GoogleFonts.poppins(
+              fontSize: AppTheme.fontSizeH2,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          )
+              .animate()
+              .fadeIn(duration: 600.ms)
+              .slideY(begin: -0.3, duration: 600.ms, curve: Curves.easeOutBack),
         ),
         if (_isScanning)
           IconButton(
@@ -298,9 +427,7 @@ class _CreateMarketplaceListingScreenState
               ),
             ],
           ),
-
           SizedBox(height: AppTheme.spacingMedium),
-
           _buildInfoRow('Evento', _currentEvent!, isDark),
           SizedBox(height: AppTheme.spacingSmall),
           _buildInfoRow('Zona', _currentZone!, isDark),
@@ -401,13 +528,10 @@ class _CreateMarketplaceListingScreenState
               ),
             ],
           ),
-
           SizedBox(height: AppTheme.spacingMedium),
-
           ...List.generate(
             _scannedTickets.length,
-            (index) =>
-                _buildTicketItem(_scannedTickets[index], index, res, isDark),
+            (index) => _buildTicketItem(_scannedTickets[index], index, res, isDark),
           ),
         ],
       ),
@@ -421,86 +545,83 @@ class _CreateMarketplaceListingScreenState
     bool isDark,
   ) {
     return Container(
-          margin: EdgeInsets.only(
-            bottom: index < _scannedTickets.length - 1
-                ? AppTheme.spacingMedium
-                : 0,
-          ),
-          padding: EdgeInsets.all(AppTheme.spacingMedium),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.1),
+      margin: EdgeInsets.only(
+        bottom: index < _scannedTickets.length - 1
+            ? AppTheme.spacingMedium
+            : 0,
+      ),
+      padding: EdgeInsets.all(AppTheme.spacingMedium),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusNormal),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Icono del ticket
+          Container(
+            padding: EdgeInsets.all(AppTheme.spacingSmall),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(
+                AppTheme.borderRadiusSmall,
+              ),
+            ),
+            child: Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: res.dp(2),
             ),
           ),
-          child: Row(
-            children: [
-              // Icono del ticket
-              Container(
-                padding: EdgeInsets.all(AppTheme.spacingSmall),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                    AppTheme.borderRadiusSmall,
+          SizedBox(height: 0, width: AppTheme.spacingMedium),
+          // Información del ticket
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ticket #${ticket.id}',
+                  style: GoogleFonts.inter(
+                    fontSize: AppTheme.fontSizeBodyNormal,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
-                child: Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: res.dp(2),
+                const SizedBox(height: 2),
+                Text(
+                  'Estado: ${ticket.status}',
+                  style: GoogleFonts.inter(
+                    fontSize: AppTheme.fontSizeBodyMedium,
+                    color: isDark ? Colors.white60 : Colors.black54,
+                  ),
                 ),
-              ),
-
-              SizedBox(width: AppTheme.spacingMedium),
-
-              // Información del ticket
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Ticket #${ticket.id}',
-                      style: GoogleFonts.inter(
-                        fontSize: AppTheme.fontSizeBodyNormal,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Estado: ${ticket.status}',
-                      style: GoogleFonts.inter(
-                        fontSize: AppTheme.fontSizeBodyMedium,
-                        color: isDark ? Colors.white60 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Botón eliminar
-              IconButton(
-                onPressed: () => _removeTicket(index),
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                  size: res.dp(2),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        )
+          // Botón eliminar
+          IconButton(
+            onPressed: () => _removeTicket(index),
+            icon: Icon(
+              Icons.delete_outline,
+              color: Colors.red,
+              size: res.dp(2),
+            ),
+          ),
+        ],
+      ),
+    )
         .animate(delay: Duration(milliseconds: index * 100))
         .fadeIn(duration: 300.ms)
         .slideX(begin: 0.3, duration: 300.ms);
   }
 
-  // Botón de agregar ticket
+  // Botón de agregar ticket (verifica cuenta bancaria)
   Widget _buildAddTicketButton(Responsive res, bool isDark) {
     return AppCard(
       padding: EdgeInsets.symmetric(vertical: AppTheme.spacingLarge),
@@ -535,9 +656,14 @@ class _CreateMarketplaceListingScreenState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _showAddTicketOptions(context, res, isDark),
-              icon: Icon(Icons.add),
-              label: Text('Agregar Ticket'),
+              onPressed: () async {
+                if (_bankCheckInProgress) return;
+                final ok = await _requireBankAccountOrRedirect();
+                if (!ok) return;
+                _showAddTicketOptions(context, res, isDark);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar Ticket'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
@@ -682,7 +808,7 @@ class _CreateMarketplaceListingScreenState
                       color: isDark ? Colors.white : Colors.grey[800],
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: GoogleFonts.inter(
@@ -729,9 +855,7 @@ class _CreateMarketplaceListingScreenState
               ),
             ],
           ),
-
           SizedBox(height: AppTheme.spacingMedium),
-
           TextFormField(
             controller: _priceController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -775,12 +899,18 @@ class _CreateMarketplaceListingScreenState
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, duration: 600.ms);
   }
 
-  // Botón de publicar
+  // Botón de publicar (verifica cuenta bancaria)
   Widget _buildPublishButton(Responsive res, bool isDark) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _publishListing,
+        onPressed: _isLoading
+            ? null
+            : () async {
+                final ok = await _requireBankAccountOrRedirect();
+                if (!ok) return;
+                await _publishListing();
+              },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
@@ -790,7 +920,7 @@ class _CreateMarketplaceListingScreenState
           ),
         ),
         child: _isLoading
-            ? CircularProgressIndicator(
+            ? const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               )
             : Text(
@@ -804,6 +934,10 @@ class _CreateMarketplaceListingScreenState
     );
   }
 
+  // ==========================
+  // LÓGICA
+  // ==========================
+
   // Manejar detección de QR desde cámara
   void _onQRDetected(BarcodeCapture capture) async {
     if (!mounted) return;
@@ -811,7 +945,6 @@ class _CreateMarketplaceListingScreenState
     if (barcodes.isNotEmpty && !_isLoading) {
       final qrData = barcodes.first.rawValue;
       if (qrData != null) {
-        print('[DEBUG] QR Raw Data: $qrData');
         await _validateQR(qrData);
       }
     }
@@ -832,38 +965,32 @@ class _CreateMarketplaceListingScreenState
           final qrToken = response['data']['qr'];
           await _validateQR(qrToken);
         } else {
-          _showError(
-            'No se pudo leer el QR de la imagen: ${response['mensaje']}',
-          );
+          _showError('No se pudo leer el QR de la imagen: ${response['mensaje']}');
         }
       } catch (e) {
         _showError('Error al procesar la imagen: $e');
       } finally {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
   Future<void> _validateQR(String qrToken) async {
-    if (!mounted) return; // Verificar si el widget sigue montado
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
 
     try {
-      print('[DEBUG] Validating QR Token: $qrToken');
       final repository = ref.read(ticketsRepositoryProvider);
       final response = await repository.validateQRCode(qrToken);
 
-      print('[DEBUG] Validation Response: $response');
-
-      if (!mounted) return; // Verificar nuevamente antes de procesar
+      if (!mounted) return;
 
       // El repository ya devuelve directamente los datos del ticket
       if (response.isNotEmpty &&
           response['id'] != null &&
           response['status'] != null) {
         final ticketData = response;
-        print('[DEBUG] Ticket Data: $ticketData');
 
         final ticketInfo = ScannedTicketInfo(
           id: ticketData['id'],
@@ -874,60 +1001,51 @@ class _CreateMarketplaceListingScreenState
           qrToken: qrToken,
         );
 
-        // Verificar si el ticket ya fue escaneado
+        // Duplicado
         if (_qrTokens.contains(qrToken)) {
-          if (mounted) _showError('Este ticket ya fue escaneado');
+          _showError('Este ticket ya fue escaneado');
           return;
         }
 
-        // Verificar estado del ticket - solo permitir PENDING_PAYMENT
+        // Solo permitir vendidos/pagados si así lo exige tu negocio
         if (ticketInfo.status != 'PENDING_PAYMENT') {
-          if (mounted) {
-            _showError(
-              'Solo se pueden vender tickets pagados (Estado actual: ${ticketInfo.status})',
-            );
-          }
+          _showError(
+            'Solo se pueden vender tickets pagados (Estado actual: ${ticketInfo.status})',
+          );
           return;
         }
 
-        // Verificar que sea del mismo evento y zona
+        // Consistencia evento/zona
         if (_currentEvent == null && _currentZone == null) {
-          // Primer ticket escaneado
           _currentEvent = ticketInfo.evento;
           _currentZone = ticketInfo.zona;
         } else if (_currentEvent != ticketInfo.evento ||
             _currentZone != ticketInfo.zona) {
-          if (mounted) {
-            _showError(
-              'Todos los tickets deben ser del mismo evento y zona.\nEsperado: $_currentEvent - $_currentZone\nEncontrado: ${ticketInfo.evento} - ${ticketInfo.zona}',
-            );
-          }
+          _showError(
+            'Todos los tickets deben ser del mismo evento y zona.\n'
+            'Esperado: $_currentEvent - $_currentZone\n'
+            'Encontrado: ${ticketInfo.evento} - ${ticketInfo.zona}',
+          );
           return;
         }
 
-        // Agregar ticket a las listas
+        // Agregar
         _qrTokens.add(qrToken);
         _scannedTickets.add(ticketInfo);
 
         // Salir del modo scanner
-        if (mounted) {
-          setState(() => _isScanning = false);
-          _scannerController?.dispose();
-          _scannerController = null;
+        setState(() => _isScanning = false);
+        _scannerController?.dispose();
+        _scannerController = null;
 
-          _showSuccess(
-            'Ticket agregado correctamente (${_scannedTickets.length} tickets)',
-          );
-        }
+        _showSuccess(
+          'Ticket agregado correctamente (${_scannedTickets.length} tickets)',
+        );
       } else {
-        // Si la respuesta no tiene la estructura esperada
-        print('[DEBUG] Invalid ticket data structure: $response');
-        if (mounted) _showError('Los datos del ticket no son válidos');
+        _showError('Los datos del ticket no son válidos');
       }
-    } catch (e, stackTrace) {
-      print('[DEBUG] Exception in _validateQR: $e');
-      print('[DEBUG] Stack trace: $stackTrace');
-      if (mounted) _showError('Error al validar QR: $e');
+    } catch (e) {
+      _showError('Error al validar QR: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -979,13 +1097,11 @@ class _CreateMarketplaceListingScreenState
 
       // Volver a la pantalla anterior después de un breve delay
       await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       _showError('Error al crear la publicación: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -1003,8 +1119,6 @@ class _CreateMarketplaceListingScreenState
   void _showError(String? message) {
     if (!mounted) return;
     final errorMessage = message ?? 'Error desconocido';
-    print('[DEBUG] Showing error: $errorMessage');
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(errorMessage),
@@ -1016,7 +1130,10 @@ class _CreateMarketplaceListingScreenState
   }
 }
 
-// Clases para el overlay elegante del scanner
+// ==========================
+// Overlay elegante del scanner
+// ==========================
+
 class _ScannerOverlay extends StatefulWidget {
   final Rect cutOutRect;
   final VoidCallback onToggleTorch;
@@ -1249,9 +1366,9 @@ class _CircleButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, color: Colors.white, size: 24),
+        child: const Padding(
+          padding: EdgeInsets.all(10),
+          child: Icon(Icons.flash_on_rounded, color: Colors.white, size: 24),
         ),
       ),
     );

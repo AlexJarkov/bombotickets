@@ -1,6 +1,9 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:developer';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bombotickets/config/environment.dart';
 
@@ -43,6 +46,7 @@ class ProfileRepository {
       rethrow;
     }
   }
+
 
   Future<Map<String, dynamic>> updateUserByEmail(
     String email,
@@ -131,3 +135,5 @@ class ProfileRepository {
     return updateUserByEmail(email, {'imagen': ''});
   }
 }
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) => ProfileRepository());
+

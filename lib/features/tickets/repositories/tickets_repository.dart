@@ -259,7 +259,7 @@ class TicketsRepository {
 
         // Convertir las publicaciones del servidor a MarketplaceOffer
         final List<MarketplaceOffer> offers = [];
-        final Set<int> seenIds = <int>{}; // Para evitar duplicados
+        //final Set<int> seenIds = <int>{}; // Para evitar duplicados
 
         for (final item in publicationsData) {
           try {
@@ -268,11 +268,13 @@ class TicketsRepository {
             );
 
             // Verificar si ya hemos procesado esta publicación
+            /*
             if (seenIds.contains(publication.id)) {
               log('Skipping duplicate publication with id: ${publication.id}');
               continue;
             }
             seenIds.add(publication.id);
+            */
 
             final offer = publication.toMarketplaceOffer(
               eventName: eventName,

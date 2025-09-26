@@ -3,10 +3,15 @@ import 'package:bombotickets/features/auth/register/presentation/register_screen
 import 'package:bombotickets/features/auth/splash/presentation/splash_screen.dart';
 import 'package:bombotickets/features/auth/otp_verification/presentation/otp_verification_screen.dart';
 import 'package:bombotickets/config/layout/main_layout.dart';
+import 'package:bombotickets/features/profile/models/CuentaBancariaModels.dart';
+import 'package:bombotickets/features/profile/presentation/cuenta_bancaria_form.screen.dart';
+import 'package:bombotickets/features/profile/presentation/cuenta_bancaria_list.screen.dart';
+import 'package:bombotickets/features/profile/presentation/cuenta_bancario_detail.screen.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_scanner_screen.dart';
 import 'package:bombotickets/features/scanner/presentation/qr_live_scanner_screen.dart';
 import 'package:bombotickets/features/tickets/qr/presentation/qr_generation_screen.dart';
 import 'package:bombotickets/features/tickets/qr/presentation/qr_screen.dart';
+import 'package:bombotickets/features/tickets/qr/presentation/qr_succes_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bombotickets/features/tickets/presentation/sell_screen.dart';
 
@@ -106,5 +111,37 @@ final appRouter = GoRouter(
   path: '/qr-generation',
   builder: (context, state) => const QrGenerationScreen(),
 ),
+GoRoute(
+  name: 'qr-success',
+  path: '/qr-success',
+  builder: (context, state) => const QrSuccessScreen(),
+),
+ // Lista
+    GoRoute(
+      path: '/mis-cuentas-bancarias',
+      name: MisCuentasBancariasScreen.name,
+      builder: (context, state) => const MisCuentasBancariasScreen(),
+    ),
+GoRoute(
+  path: '/cuentas/detalle',
+  name: 'cuenta-bancaria-detalle',
+  builder: (context, state) {
+    final cuenta = state.extra as CuentaBancaria;
+    return CuentaBancariaDetalleScreen(account: cuenta);
+  },
+),
+
+
+    // Form (create/edit via extra)
+    GoRoute(
+      path: '/cuentas/new',
+      name: BankAccountFormScreen.name,
+      builder: (context, state) {
+        final args = state.extra as BankAccountFormArgs? ??
+            const BankAccountFormArgs.create();
+        return BankAccountFormScreen(args: args);
+      },
+    ),
+
   ],
 );
